@@ -15,9 +15,15 @@ type Trap struct {
 	Format string `yaml:"format"`
 }
 
+type Mackerel struct {
+	ApiKey string `yaml:"x-api-key"`
+	HostID string `yaml:"host-id"`
+}
+
 type Config struct {
 	MIB        *MIB        `yaml:"mib"`
 	TrapServer *TrapServer `yaml:"snmp"`
 	Trap       []*Trap     `yaml:"trap"`
 	Debug      bool        `yaml:"debug"`
+	Mackerel   *Mackerel   `yaml:"mackerel"`
 }

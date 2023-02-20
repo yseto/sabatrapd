@@ -1,14 +1,21 @@
 package main
 
 import (
+	"bytes"
+	"container/list"
+	"context"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
 	"text/template"
+	"time"
 
 	g "github.com/gosnmp/gosnmp"
+	mackerel "github.com/mackerelio/mackerel-client-go"
 	"github.com/sleepinggenius2/gosmi/types"
 	"gopkg.in/yaml.v3"
 )
@@ -17,23 +24,27 @@ const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
 
 var mibParser SMI
 var c Config
+var buffers = list.New()
+var mutex = &sync.Mutex{}
 
 func main() {
-	defer func() {
-		mibParser.Close()
-	}()
-
 	// TODO args.
 	f, err := os.ReadFile("config.yaml")
 
+	// load config.
 	err = yaml.Unmarshal(f, &c)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	// init mib parser
 	mibParser.Modules = c.MIB.LoadModules
 	mibParser.Paths = c.MIB.Directory
 	mibParser.Init()
+	defer mibParser.Close()
 
 	// template tests.
 	funcmap := template.FuncMap{
@@ -53,6 +64,7 @@ func main() {
 		}
 	}
 
+	// trapListner
 	trapListner := g.NewTrapListener()
 	trapListner.OnNewTrap = trapHandler
 	trapListner.Params = g.Default
@@ -60,10 +72,40 @@ func main() {
 		trapListner.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
 	}
 
-	err = trapListner.Listen(net.JoinHostPort(c.TrapServer.Address, c.TrapServer.Port))
-	if err != nil {
-		log.Fatalf("error in listen: %s", err)
-	}
+	client := mackerel.NewClient(c.Mackerel.ApiKey)
+
+	wg := sync.WaitGroup{}
+
+	t := time.NewTicker(500 * time.Millisecond)
+	defer t.Stop()
+
+	wg.Add(1)
+	go func() {
+		err = trapListner.Listen(net.JoinHostPort(c.TrapServer.Address, c.TrapServer.Port))
+		if err != nil {
+			log.Fatalf("error in listen: %s", err)
+		}
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-t.C:
+				sendToMackerel(ctx, client, c.Mackerel.HostID)
+
+			case <-ctx.Done():
+				trapListner.Close()
+				log.Println("trapListner is close.")
+				log.Println("cancellation from context:", ctx.Err())
+				return
+			}
+		}
+	}()
+	log.Println("initialized.")
+	wg.Wait()
 }
 
 func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
@@ -144,7 +186,15 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 
 	var tpl = template.New("").Funcs(funcmap)
 
-	if err := template.Must(tpl.Parse(specificTrapFormat)).Execute(os.Stdout, pad); err != nil {
+	var wr bytes.Buffer
+	if err := template.Must(tpl.Parse(specificTrapFormat)).Execute(&wr, pad); err != nil {
 		log.Println(err)
 	}
+
+	mutex.Lock()
+	buffers.PushBack(mackerelCheck{
+		Addr:    addr.IP.String(),
+		Message: wr.String(),
+	})
+	mutex.Unlock()
 }
