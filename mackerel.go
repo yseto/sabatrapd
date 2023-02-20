@@ -25,6 +25,7 @@ func sendToMackerel(ctx context.Context, client *mackerel.Client, hostId string)
 
 	v := e.Value.(mackerelCheck)
 
+	// TODO: message length...
 	reports := []*mackerel.CheckReport{
 		{
 			Source:     mackerel.NewCheckSourceHost(hostId),
