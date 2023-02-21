@@ -68,6 +68,7 @@ func main() {
 	trapListner := g.NewTrapListener()
 	trapListner.OnNewTrap = trapHandler
 	trapListner.Params = g.Default
+	trapListner.Params.Community = c.TrapServer.Community
 	if c.Debug {
 		trapListner.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
 	}

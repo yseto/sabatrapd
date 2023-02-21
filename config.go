@@ -6,8 +6,9 @@ type MIB struct {
 }
 
 type TrapServer struct {
-	Address string `yaml:"addr"`
-	Port    string `yaml:"port"`
+	Address   string `yaml:"addr"`
+	Port      string `yaml:"port"`
+	Community string `yaml:"community"`
 }
 
 type Trap struct {
