@@ -114,6 +114,7 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 
 	var pad = make(map[string]string)
 	var specificTrapFormat string
+	var occurredAt = time.Now().Unix()
 
 	for _, v := range packet.Variables {
 		if strings.HasPrefix(v.Name, SnmpTrapOIDPrefix) {
@@ -194,8 +195,9 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 
 	mutex.Lock()
 	buffers.PushBack(mackerelCheck{
-		Addr:    addr.IP.String(),
-		Message: wr.String(),
+		OccurredAt: occurredAt,
+		Addr:       addr.IP.String(),
+		Message:    wr.String(),
 	})
 	mutex.Unlock()
 }

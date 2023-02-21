@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
 
 	mackerel "github.com/mackerelio/mackerel-client-go"
 )
 
 type mackerelCheck struct {
-	Addr    string
-	Message string
+	OccurredAt int64
+	Addr       string
+	Message    string
 }
 
 func sendToMackerel(ctx context.Context, client *mackerel.Client, hostId string) {
@@ -32,7 +32,7 @@ func sendToMackerel(ctx context.Context, client *mackerel.Client, hostId string)
 			Status:     mackerel.CheckStatusWarning,
 			Name:       fmt.Sprintf("snmptrap %s", v.Addr),
 			Message:    v.Message,
-			OccurredAt: time.Now().Unix(),
+			OccurredAt: v.OccurredAt,
 		},
 	}
 	err := client.PostCheckReports(&mackerel.CheckReports{Reports: reports})
