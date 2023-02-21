@@ -21,10 +21,23 @@ type Mackerel struct {
 	HostID string `yaml:"host-id"`
 }
 
+type Charset = string
+
+const (
+	CharsetShiftJis Charset = "shift-jis"
+	CharsetUTF8     Charset = "utf-8"
+)
+
+type Encoding struct {
+	Address string  `yaml:"addr"`
+	Charset Charset `yaml:"charset"`
+}
+
 type Config struct {
 	MIB        *MIB        `yaml:"mib"`
 	TrapServer *TrapServer `yaml:"snmp"`
 	Trap       []*Trap     `yaml:"trap"`
 	Debug      bool        `yaml:"debug"`
 	Mackerel   *Mackerel   `yaml:"mackerel"`
+	Encoding   []*Encoding `yaml:"encoding"`
 }

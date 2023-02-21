@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"container/list"
 	"context"
@@ -17,6 +18,8 @@ import (
 	g "github.com/gosnmp/gosnmp"
 	mackerel "github.com/mackerelio/mackerel-client-go"
 	"github.com/sleepinggenius2/gosmi/types"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/transform"
 	"gopkg.in/yaml.v3"
 )
 
@@ -26,6 +29,7 @@ var mibParser SMI
 var c Config
 var buffers = list.New()
 var mutex = &sync.Mutex{}
+var CharsetMap = make(map[string]Charset)
 
 func main() {
 	// TODO args.
@@ -61,6 +65,24 @@ func main() {
 	for i := range c.Trap {
 		if _, err := tmpl.Parse(c.Trap[i].Format); err != nil {
 			log.Fatalln(err)
+		}
+	}
+
+	// encoding tests.
+	encodings := []Charset{CharsetShiftJis, CharsetUTF8}
+	for i := range c.Encoding {
+		if net.ParseIP(c.Encoding[i].Address) == nil {
+			log.Fatalf("cant parse ip : %q", c.Encoding[i].Address)
+		}
+		ok := false
+		for j := range encodings {
+			if encodings[j] == c.Encoding[i].Charset {
+				ok = true
+				CharsetMap[c.Encoding[i].Address] = c.Encoding[i].Charset
+			}
+		}
+		if !ok {
+			log.Fatalf("charset is missing. %q", c.Encoding[i].Charset)
 		}
 	}
 
@@ -146,7 +168,18 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 			switch v.Type {
 			case g.OctetString:
 				b := v.Value.([]byte)
-				padValue = string(b)
+				switch CharsetMap[addr.IP.String()] {
+				case CharsetShiftJis:
+					padValue, err = transformShiftJIS(b)
+					if err != nil {
+						fmt.Printf("%+v\n", err)
+						padValue = "<can not decode>"
+					}
+				case CharsetUTF8:
+					fallthrough
+				default:
+					padValue = string(b)
+				}
 				// fmt.Printf("OID: %s, string: %s\n", v.Name, string(b))
 			case g.ObjectIdentifier:
 				valNode, err := mibParser.FromOID(v.Value.(string))
@@ -200,4 +233,13 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 		Message:    wr.String(),
 	})
 	mutex.Unlock()
+}
+
+func transformShiftJIS(b []byte) (string, error) {
+	scanner := bufio.NewScanner(transform.NewReader(bytes.NewBuffer(b), japanese.ShiftJIS.NewDecoder()))
+	var str string
+	for scanner.Scan() {
+		str += scanner.Text()
+	}
+	return str, scanner.Err()
 }

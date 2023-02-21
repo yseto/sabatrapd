@@ -26,3 +26,6 @@ trap:
 mackerel:
   x-api-key: ****
   host-id: ****
+encoding:
+# - addr: 127.0.0.1
+#   charset: shift-jis

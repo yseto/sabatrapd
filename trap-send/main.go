@@ -62,6 +62,20 @@ func main() {
 		}
 	*/
 
+	/*
+			trap := g.SnmpTrap{
+				Variables: []g.SnmpPDU{
+					{Value: ".1.3.6.1.6.3.1.1.5.3", Name: ".1.3.6.1.6.3.1.1.4.1.0", Type: g.ObjectIdentifier},
+					{Value: 9, Name: ".1.3.6.1.2.1.2.2.1.1.9", Type: g.Integer},
+					// テストメッセージです。 on Shift-JIS (hankaku kana)
+					{Value: []byte{0xc3, 0xbd, 0xc4, 0xd2, 0xaf, 0xbe, 0xb0, 0xbc, 0xde, 0x82, 0xc5, 0x82, 0xb7, 0x81, 0x42}, Name: ".1.3.6.1.2.1.2.2.1.2.9", Type: g.OctetString},
+					{Value: 6, Name: ".1.3.6.1.2.1.2.2.1.3.9", Type: g.Integer},
+					{Value: 2, Name: ".1.3.6.1.2.1.2.2.1.7.9", Type: g.Integer},
+					{Value: 2, Name: ".1.3.6.1.2.1.2.2.1.8.9", Type: g.Integer},
+				},
+			}
+	*/
+
 	_, err = g.Default.SendTrap(trap)
 	if err != nil {
 		log.Fatalf("SendTrap() err: %v", err)
