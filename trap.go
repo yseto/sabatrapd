@@ -72,7 +72,7 @@ func main() {
 	encodings := []Charset{CharsetShiftJis, CharsetUTF8}
 	for i := range c.Encoding {
 		if net.ParseIP(c.Encoding[i].Address) == nil {
-			log.Fatalf("cant parse ip : %q", c.Encoding[i].Address)
+			log.Fatalf("can't parse ip : %q", c.Encoding[i].Address)
 		}
 		ok := false
 		for j := range encodings {
@@ -95,7 +95,24 @@ func main() {
 		trapListener.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
 	}
 
-	client := mackerel.NewClient(c.Mackerel.ApiKey)
+	if c.Mackerel.ApiKey == "" {
+		log.Fatalf("x-api-key isn't defined.")
+	}
+	if c.Mackerel.HostID == "" {
+		log.Fatalf("host-id isn't defined.")
+	}
+
+	var client *mackerel.Client
+	if c.Mackerel.ApiBase == "" {
+		client = mackerel.NewClient(c.Mackerel.ApiKey)
+	} else {
+		client, _ = mackerel.NewClientWithOptions(c.Mackerel.ApiKey, c.Mackerel.ApiBase, false)
+	}
+
+	_, err = client.FindHost(c.Mackerel.HostID)
+	if err != nil {
+		log.Fatalf("Either x-api-key or host-id is invalid.\n%s", err)
+	}
 
 	wg := sync.WaitGroup{}
 
@@ -121,7 +138,7 @@ func main() {
 
 			case <-ctx.Done():
 				trapListener.Close()
-				log.Println("trapListener is close.")
+				log.Println("trapListener is closed.")
 				log.Println("cancellation from context:", ctx.Err())
 				return
 			}
@@ -173,7 +190,7 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 					padValue, err = transformShiftJIS(b)
 					if err != nil {
 						fmt.Printf("%+v\n", err)
-						padValue = "<can not decode>"
+						padValue = "<cannot decode>"
 					}
 				case CharsetUTF8:
 					fallthrough
@@ -210,7 +227,7 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 
 	funcmap := template.FuncMap{
 		"read": func(key string) string {
-			return fmt.Sprintf("%s", pad[key])
+			return pad[key]
 		},
 		"addr": func() string {
 			return addr.IP.String()
