@@ -1,0 +1,55 @@
+# for YAMAHA
+# List: http://www.rtpro.yamaha.co.jp/SW/docs/swx3200/Rev_4_00_13/other/other_snmp_mib.html?rev=4.00.13&category=other#62-rmon%E3%82%B0%E3%83%AB%E3%83%BC%E3%83%97%E3%81%AE%E3%83%88%E3%83%A9%E3%83%83%E3%83%97
+# MIB: http://www.rtpro.yamaha.co.jp/RT/docs/mib/index.php
+trap:
+  # risingAlarm
+  - ident: .1.3.6.1.2.1.16.0.1
+    format: '{{addr}} exceeded RMON uppper limit'
+  # fallingAlarm
+  - ident: .1.3.6.1.2.1.16.0.2
+    format: '{{addr}} exceeded RMON lower limit'
+  # newRoot
+  - ident: .1.3.6.1.2.1.17.0.1
+  - format: '{{addr}} becomes new root'
+  # topologyChange
+  - ident: .1.3.6.1.2.1.17.0.2
+  - format: '{{addr}} detected topology changes'
+  # yshTemperatureStatusNormalTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.5
+  - format: '{{addr}} backed to normal temperature'
+  # yshTemperatureStatusWarningTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.6
+  - format: '{{addr}} heats "warning" level'
+  # yshTemperatureStatusErrorTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.7
+  - format: '{{addr}} heats "error" level'
+  # yshFanStoppedTrap
+  - ident .1.3.6.1.4.1.1182.3.1.0.8
+  - format: '{{addr}} stopped its FAN'
+  # yshFanSpeedUpTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.9
+  - format: '{{addr}} increases the speed of its FAN'
+  # yshFanSpeedDownTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.10
+  - format: '{{addr}} decreases the speed of its FAN'
+  # yshVIVoltageErrorTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.11
+  - format: '{{addr}} detected abnormal volatage'
+  # yshVICurrentErrorTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.12
+  - format: '{{addr}} detected abnormal electric current'
+  # ysl2msFindSlave
+  - ident: .1.3.6.1.4.1.1182.3.5.0.1
+  - format: '{{addr}} found L2MS slave'
+  # ysl2msDetectDown
+  - ident: .1.3.6.1.4.1.1182.3.5.0.2
+  - format: '{{addr}} lost L2MS slave'
+  # ysedTrap
+  - ident: .1.3.6.1.4.1.1182.3.6.0.1
+  - format: '{{addr}} catched ErrorDisable trap'
+  # ystmIfTermTrap
+  - ident: .1.3.6.1.4.1.1182.3.8.0.1
+  - format: '{{addr}} detected a port monitoring'
+  # ystmIpTermTrap
+  - ident: .1.3.6.1.4.1.1182.3.8.0.2
+  - format: '{{addr}} detected IP address monitoring'
