@@ -86,13 +86,13 @@ func main() {
 		}
 	}
 
-	// trapListner
-	trapListner := g.NewTrapListener()
-	trapListner.OnNewTrap = trapHandler
-	trapListner.Params = g.Default
-	trapListner.Params.Community = c.TrapServer.Community
+	// trapListener
+	trapListener := g.NewTrapListener()
+	trapListener.OnNewTrap = trapHandler
+	trapListener.Params = g.Default
+	trapListener.Params.Community = c.TrapServer.Community
 	if c.Debug {
-		trapListner.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
+		trapListener.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
 	}
 
 	client := mackerel.NewClient(c.Mackerel.ApiKey)
@@ -104,7 +104,7 @@ func main() {
 
 	wg.Add(1)
 	go func() {
-		err = trapListner.Listen(net.JoinHostPort(c.TrapServer.Address, c.TrapServer.Port))
+		err = trapListener.Listen(net.JoinHostPort(c.TrapServer.Address, c.TrapServer.Port))
 		if err != nil {
 			log.Fatalf("error in listen: %s", err)
 		}
@@ -120,8 +120,8 @@ func main() {
 				sendToMackerel(ctx, client, c.Mackerel.HostID)
 
 			case <-ctx.Done():
-				trapListner.Close()
-				log.Println("trapListner is close.")
+				trapListener.Close()
+				log.Println("trapListener is close.")
 				log.Println("cancellation from context:", ctx.Err())
 				return
 			}
