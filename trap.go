@@ -41,9 +41,6 @@ func main() {
 		log.Fatalf("error: %v", err)
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-
 	// init mib parser
 	mibParser.Modules = c.MIB.LoadModules
 	mibParser.Paths = c.MIB.Directory
@@ -110,6 +107,9 @@ func main() {
 	}
 
 	queue = notification.NewQueue(client, c.Mackerel.HostID)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
 	wg := sync.WaitGroup{}
 
