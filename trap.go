@@ -135,7 +135,7 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 
 	if c.TrapServer.Community != packet.Community {
 		if c.Debug {
-			log.Printf("invalid community: expected '%q', but received '%q'", c.TrapServer.Community, packet.Community)
+			log.Printf("invalid community: expected %q, but received %q", c.TrapServer.Community, packet.Community)
 		}
 		return
 	}
