@@ -17,8 +17,9 @@ type Trap struct {
 }
 
 type Mackerel struct {
-	ApiKey string `yaml:"x-api-key"`
-	HostID string `yaml:"host-id"`
+	ApiKey  string `yaml:"x-api-key"`
+	ApiBase string `yaml:"apibase"`
+	HostID  string `yaml:"host-id"`
 }
 
 type Charset = string
