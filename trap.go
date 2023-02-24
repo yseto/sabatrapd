@@ -90,7 +90,6 @@ func main() {
 	trapListener := g.NewTrapListener()
 	trapListener.OnNewTrap = trapHandler
 	trapListener.Params = g.Default
-	trapListener.Params.Community = c.TrapServer.Community
 	if c.Debug {
 		trapListener.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
 	}
@@ -133,6 +132,13 @@ func main() {
 
 func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	// log.Printf("got trapdata from %s\n", addr.IP)
+
+	if c.TrapServer.Community != packet.Community {
+		if c.Debug {
+			log.Printf("invalid community: expected %q, but received %q", c.TrapServer.Community, packet.Community)
+		}
+		return
+	}
 
 	var pad = make(map[string]string)
 	var specificTrapFormat string
