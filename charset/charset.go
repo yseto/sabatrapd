@@ -39,3 +39,21 @@ func (c *Decoder) Register(addr, charset string) error {
 	}
 	return fmt.Errorf("charset is missing. %q", charset)
 }
+
+// Decode binary to string.
+func (c *Decoder) Decode(addr string, b []byte) (string, error) {
+	var val string
+	var err error
+	switch c.m[addr] {
+	case ShiftJis:
+		val, err = transformShiftJIS(b)
+		if err != nil {
+			return "", err
+		}
+	case UTF8:
+		fallthrough
+	default:
+		val = string(b)
+	}
+	return val, nil
+}
