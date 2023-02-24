@@ -106,7 +106,10 @@ func main() {
 	if c.Mackerel.ApiBase == "" {
 		client = mackerel.NewClient(c.Mackerel.ApiKey)
 	} else {
-		client, _ = mackerel.NewClientWithOptions(c.Mackerel.ApiKey, c.Mackerel.ApiBase, false)
+		client, err = mackerel.NewClientWithOptions(c.Mackerel.ApiKey, c.Mackerel.ApiBase, false)
+		if err != nil {
+			log.Fatalf("invalid apibase: %s", err)
+		}
 	}
 
 	_, err = client.FindHost(c.Mackerel.HostID)
