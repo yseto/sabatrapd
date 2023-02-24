@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -10,13 +9,13 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/yseto/sabatrapd/charset"
 	"github.com/yseto/sabatrapd/config"
 	"github.com/yseto/sabatrapd/notification"
 	"github.com/yseto/sabatrapd/smi"
+	"github.com/yseto/sabatrapd/template"
 
 	g "github.com/gosnmp/gosnmp"
 	mackerel "github.com/mackerelio/mackerel-client-go"
@@ -48,19 +47,8 @@ func main() {
 	defer mibParser.Close()
 
 	// template tests.
-	funcmap := template.FuncMap{
-		"read": func(key string) string {
-			return "dummy"
-		},
-		"addr": func() string {
-			return "dummy"
-		},
-	}
-
-	var tmpl = template.New("").Funcs(funcmap)
-
 	for i := range c.Trap {
-		if _, err := tmpl.Parse(c.Trap[i].Format); err != nil {
+		if err := template.Parse(c.Trap[i].Format); err != nil {
 			log.Fatalln(err)
 		}
 	}
@@ -222,27 +210,15 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 		return
 	}
 
-	funcmap := template.FuncMap{
-		"read": func(key string) string {
-			return pad[key]
-		},
-		"addr": func() string {
-			return addr.IP.String()
-		},
-	}
-
-	// fmt.Printf("%+v\n", pad)
-
-	var tpl = template.New("").Funcs(funcmap)
-
-	var wr bytes.Buffer
-	if err := template.Must(tpl.Parse(specificTrapFormat)).Execute(&wr, pad); err != nil {
+	message, err := template.Execute(specificTrapFormat, pad, addr.IP.String())
+	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	queue.Enqueue(notification.Item{
 		OccurredAt: occurredAt,
 		Addr:       addr.IP.String(),
-		Message:    wr.String(),
+		Message:    message,
 	})
 }
