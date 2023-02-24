@@ -1,4 +1,4 @@
-module github.com/yseto/practice-go-snmptrap
+module github.com/yseto/sabatrapd
 
 go 1.19
 
