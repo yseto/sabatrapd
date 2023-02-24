@@ -16,6 +16,7 @@ import (
 
 	"github.com/yseto/sabatrapd/charset"
 	"github.com/yseto/sabatrapd/config"
+	"github.com/yseto/sabatrapd/smi"
 
 	g "github.com/gosnmp/gosnmp"
 	mackerel "github.com/mackerelio/mackerel-client-go"
@@ -25,7 +26,7 @@ import (
 
 const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
 
-var mibParser SMI
+var mibParser smi.SMI
 var c config.Config
 var buffers = list.New()
 var mutex = &sync.Mutex{}
