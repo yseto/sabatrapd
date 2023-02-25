@@ -34,6 +34,14 @@ type Config struct {
 	TrapServer *TrapServer `yaml:"snmp"`
 	Trap       []*Trap     `yaml:"trap"`
 	Debug      bool        `yaml:"debug"`
+	DryRun     bool        `yaml:"dry-run"`
 	Mackerel   *Mackerel   `yaml:"mackerel"`
 	Encoding   []*Encoding `yaml:"encoding"`
+}
+
+func (c *Config) RunningMode() string {
+	if c.DryRun {
+		return "dry-run"
+	}
+	return "execute"
 }
