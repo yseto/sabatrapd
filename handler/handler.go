@@ -30,7 +30,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	// log.Printf("got trapdata from %s\n", addr.IP)
 	config := h.Config
 
-	if config.TrapServer.Community != packet.Community {
+	if config.TrapServer.Community != "" && config.TrapServer.Community != packet.Community {
 		if config.Debug {
 			log.Printf("invalid community: expected %q, but received %q", config.TrapServer.Community, packet.Community)
 		}
