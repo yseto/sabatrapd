@@ -33,6 +33,9 @@ var queue *notification.Queue
 func main() {
 	// TODO args.
 	f, err := os.ReadFile("config.yaml")
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// load config.
 	err = yaml.Unmarshal(f, &c)
@@ -58,18 +61,9 @@ func main() {
 		if net.ParseIP(c.Encoding[i].Address) == nil {
 			log.Fatalf("can't parse ip : %q", c.Encoding[i].Address)
 		}
-		err = decoder.Register(c.Encoding[i].Address, c.Encoding[i].Charset)
-		if err != nil {
-			log.Fatal(err)
+		if err = decoder.Register(c.Encoding[i].Address, c.Encoding[i].Charset); err != nil {
+			log.Fatalln(err)
 		}
-	}
-
-	// trapListener
-	trapListener := g.NewTrapListener()
-	trapListener.OnNewTrap = trapHandler
-	trapListener.Params = g.Default
-	if c.Debug {
-		trapListener.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
 	}
 
 	if c.Mackerel.ApiKey == "" {
@@ -95,6 +89,14 @@ func main() {
 	}
 
 	queue = notification.NewQueue(client, c.Mackerel.HostID)
+
+	// trapListener
+	trapListener := g.NewTrapListener()
+	trapListener.OnNewTrap = trapHandler
+	trapListener.Params = g.Default
+	if c.Debug {
+		trapListener.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
