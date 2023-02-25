@@ -25,11 +25,6 @@ import (
 
 const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
 
-var mibParser smi.SMI
-var c config.Config
-var decoder = charset.NewDecoder()
-var queue *notification.Queue
-
 func main() {
 	// TODO args.
 	f, err := os.ReadFile("config.yaml")
@@ -38,12 +33,14 @@ func main() {
 	}
 
 	// load config.
+	var c config.Config
 	err = yaml.Unmarshal(f, &c)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
 
 	// init mib parser
+	var mibParser smi.SMI
 	mibParser.Modules = c.MIB.LoadModules
 	mibParser.Paths = c.MIB.Directory
 	mibParser.Init()
@@ -55,6 +52,8 @@ func main() {
 			log.Fatalln(err)
 		}
 	}
+
+	decoder := charset.NewDecoder()
 
 	// encoding tests.
 	for i := range c.Encoding {
@@ -88,7 +87,7 @@ func main() {
 		log.Fatalf("Either x-api-key or host-id is invalid.\n%s", err)
 	}
 
-	queue = notification.NewQueue(client, c.Mackerel.HostID)
+	queue := notification.NewQueue(client, c.Mackerel.HostID)
 
 	handler := &Handler{
 		&c,
