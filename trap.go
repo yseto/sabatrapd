@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/list"
 	"context"
 	"fmt"
 	"log"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/yseto/sabatrapd/charset"
 	"github.com/yseto/sabatrapd/config"
+	"github.com/yseto/sabatrapd/notification"
 	"github.com/yseto/sabatrapd/smi"
 
 	g "github.com/gosnmp/gosnmp"
@@ -28,9 +28,8 @@ const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
 
 var mibParser smi.SMI
 var c config.Config
-var buffers = list.New()
-var mutex = &sync.Mutex{}
 var decoder = charset.NewDecoder()
+var queue *notification.Queue
 
 func main() {
 	// TODO args.
@@ -41,9 +40,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
 
 	// init mib parser
 	mibParser.Modules = c.MIB.LoadModules
@@ -110,6 +106,11 @@ func main() {
 		log.Fatalf("Either x-api-key or host-id is invalid.\n%s", err)
 	}
 
+	queue = notification.NewQueue(client, c.Mackerel.HostID)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	wg := sync.WaitGroup{}
 
 	t := time.NewTicker(500 * time.Millisecond)
@@ -130,7 +131,7 @@ func main() {
 		for {
 			select {
 			case <-t.C:
-				sendToMackerel(ctx, client, c.Mackerel.HostID)
+				queue.Dequeue(ctx)
 
 			case <-ctx.Done():
 				trapListener.Close()
@@ -239,11 +240,9 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 		log.Println(err)
 	}
 
-	mutex.Lock()
-	buffers.PushBack(mackerelCheck{
+	queue.Enqueue(notification.Item{
 		OccurredAt: occurredAt,
 		Addr:       addr.IP.String(),
 		Message:    wr.String(),
 	})
-	mutex.Unlock()
 }
