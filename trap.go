@@ -62,6 +62,14 @@ func main() {
 		}
 	}
 
+	var client *mackerel.Client
+	if !conf.DryRun {
+		client, err = checkMackerelConfig(conf.Mackerel)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
+
 	queue := notification.NewQueue(client, conf.Mackerel.HostID)
 
 	handle := &handler.Handler{
@@ -112,7 +120,7 @@ func main() {
 			}
 		}
 	}()
-	log.Println("initialized.")
+	log.Printf("initialized. %s mode\n", conf.RunningMode())
 	wg.Wait()
 }
 
