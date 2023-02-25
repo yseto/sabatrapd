@@ -1,20 +1,13 @@
 snmp:
   addr: 0.0.0.0
   port: 9162
-  community: public
 mib:
   directory:
     - "/var/lib/snmp/mibs/ietf/"
   modules:
     - SNMPv2-MIB
     - IF-MIB
-#   - CISCO-CONFIG-MAN-MIB
-#   - CISCO-GENERAL-TRAPS
-#   - CISCO-SYSLOG-MIB
-debug: false
 trap:
-# - ident: .1.3.6.1.4.1.9.9.41.2.0.1
-#   format: '[{{ addr }}] {{ read "CISCO-SYSLOG-MIB::clogHistFacility" }} is msg:{{ read "CISCO-SYSLOG-MIB::clogHistMsgName" }} text:{{ read "CISCO-SYSLOG-MIB::clogHistMsgText" }}'
   - ident: .1.3.6.1.6.3.1.1.5.1
     format: '{{ addr }} is cold started'
   - ident: .1.3.6.1.6.3.1.1.5.2
