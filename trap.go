@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -61,28 +62,6 @@ func main() {
 		}
 	}
 
-	if conf.Mackerel.ApiKey == "" {
-		log.Fatalf("x-api-key isn't defined.")
-	}
-	if conf.Mackerel.HostID == "" {
-		log.Fatalf("host-id isn't defined.")
-	}
-
-	var client *mackerel.Client
-	if conf.Mackerel.ApiBase == "" {
-		client = mackerel.NewClient(conf.Mackerel.ApiKey)
-	} else {
-		client, err = mackerel.NewClientWithOptions(conf.Mackerel.ApiKey, conf.Mackerel.ApiBase, false)
-		if err != nil {
-			log.Fatalf("invalid apibase: %s", err)
-		}
-	}
-
-	_, err = client.FindHost(conf.Mackerel.HostID)
-	if err != nil {
-		log.Fatalf("Either x-api-key or host-id is invalid.\n%s", err)
-	}
-
 	queue := notification.NewQueue(client, conf.Mackerel.HostID)
 
 	handle := &handler.Handler{
@@ -135,4 +114,31 @@ func main() {
 	}()
 	log.Println("initialized.")
 	wg.Wait()
+}
+
+func checkMackerelConfig(conf *config.Mackerel) (*mackerel.Client, error) {
+	if conf.ApiKey == "" {
+		return nil, fmt.Errorf("x-api-key isn't defined.")
+	}
+	if conf.HostID == "" {
+		return nil, fmt.Errorf("host-id isn't defined.")
+	}
+
+	var client *mackerel.Client
+	var err error
+
+	if conf.ApiBase == "" {
+		client = mackerel.NewClient(conf.ApiKey)
+	} else {
+		client, err = mackerel.NewClientWithOptions(conf.ApiKey, conf.ApiBase, false)
+		if err != nil {
+			return nil, fmt.Errorf("invalid apibase: %s", err)
+		}
+	}
+
+	_, err = client.FindHost(conf.HostID)
+	if err != nil {
+		return nil, fmt.Errorf("Either x-api-key or host-id is invalid: %s", err)
+	}
+	return client, nil
 }
