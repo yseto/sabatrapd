@@ -125,7 +125,7 @@ func main() {
 }
 
 func checkMackerelConfig(conf *config.Mackerel) (*mackerel.Client, error) {
-	if conf.ApiKey == "" {
+	if conf == nil || conf.ApiKey == "" {
 		return nil, fmt.Errorf("x-api-key isn't defined.")
 	}
 	if conf.HostID == "" {
