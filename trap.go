@@ -2,99 +2,103 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/yseto/sabatrapd/charset"
 	"github.com/yseto/sabatrapd/config"
+	"github.com/yseto/sabatrapd/handler"
 	"github.com/yseto/sabatrapd/notification"
 	"github.com/yseto/sabatrapd/smi"
 	"github.com/yseto/sabatrapd/template"
 
 	g "github.com/gosnmp/gosnmp"
 	mackerel "github.com/mackerelio/mackerel-client-go"
-	"github.com/sleepinggenius2/gosmi/types"
 	"gopkg.in/yaml.v3"
 )
-
-const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
-
-var mibParser smi.SMI
-var c config.Config
-var decoder = charset.NewDecoder()
-var queue *notification.Queue
 
 func main() {
 	// TODO args.
 	f, err := os.ReadFile("config.yaml")
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// load config.
-	err = yaml.Unmarshal(f, &c)
+	var conf config.Config
+	err = yaml.Unmarshal(f, &conf)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
 
 	// init mib parser
-	mibParser.Modules = c.MIB.LoadModules
-	mibParser.Paths = c.MIB.Directory
+	var mibParser smi.SMI
+	mibParser.Modules = conf.MIB.LoadModules
+	mibParser.Paths = conf.MIB.Directory
 	mibParser.Init()
 	defer mibParser.Close()
 
 	// template tests.
-	for i := range c.Trap {
-		if err := template.Parse(c.Trap[i].Format); err != nil {
+	for i := range conf.Trap {
+		if err := template.Parse(conf.Trap[i].Format); err != nil {
 			log.Fatalln(err)
 		}
 	}
 
+	decoder := charset.NewDecoder()
+
 	// encoding tests.
-	for i := range c.Encoding {
-		if net.ParseIP(c.Encoding[i].Address) == nil {
-			log.Fatalf("can't parse ip : %q", c.Encoding[i].Address)
+	for i := range conf.Encoding {
+		if net.ParseIP(conf.Encoding[i].Address) == nil {
+			log.Fatalf("can't parse ip : %q", conf.Encoding[i].Address)
 		}
-		err = decoder.Register(c.Encoding[i].Address, c.Encoding[i].Charset)
-		if err != nil {
-			log.Fatal(err)
+		if err = decoder.Register(conf.Encoding[i].Address, conf.Encoding[i].Charset); err != nil {
+			log.Fatalln(err)
 		}
 	}
 
-	// trapListener
-	trapListener := g.NewTrapListener()
-	trapListener.OnNewTrap = trapHandler
-	trapListener.Params = g.Default
-	if c.Debug {
-		trapListener.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
-	}
-
-	if c.Mackerel.ApiKey == "" {
+	if conf.Mackerel.ApiKey == "" {
 		log.Fatalf("x-api-key isn't defined.")
 	}
-	if c.Mackerel.HostID == "" {
+	if conf.Mackerel.HostID == "" {
 		log.Fatalf("host-id isn't defined.")
 	}
 
 	var client *mackerel.Client
-	if c.Mackerel.ApiBase == "" {
-		client = mackerel.NewClient(c.Mackerel.ApiKey)
+	if conf.Mackerel.ApiBase == "" {
+		client = mackerel.NewClient(conf.Mackerel.ApiKey)
 	} else {
-		client, err = mackerel.NewClientWithOptions(c.Mackerel.ApiKey, c.Mackerel.ApiBase, false)
+		client, err = mackerel.NewClientWithOptions(conf.Mackerel.ApiKey, conf.Mackerel.ApiBase, false)
 		if err != nil {
 			log.Fatalf("invalid apibase: %s", err)
 		}
 	}
 
-	_, err = client.FindHost(c.Mackerel.HostID)
+	_, err = client.FindHost(conf.Mackerel.HostID)
 	if err != nil {
 		log.Fatalf("Either x-api-key or host-id is invalid.\n%s", err)
 	}
 
-	queue = notification.NewQueue(client, c.Mackerel.HostID)
+	queue := notification.NewQueue(client, conf.Mackerel.HostID)
+
+	handle := &handler.Handler{
+		Config:    &conf,
+		Queue:     queue,
+		MibParser: &mibParser,
+		Decoder:   decoder,
+	}
+
+	// trapListener
+	trapListener := g.NewTrapListener()
+	trapListener.OnNewTrap = handle.OnNewTrap
+	trapListener.Params = g.Default
+	if conf.Debug {
+		trapListener.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -106,7 +110,7 @@ func main() {
 
 	wg.Add(1)
 	go func() {
-		err = trapListener.Listen(net.JoinHostPort(c.TrapServer.Address, c.TrapServer.Port))
+		err = trapListener.Listen(net.JoinHostPort(conf.TrapServer.Address, conf.TrapServer.Port))
 		if err != nil {
 			log.Fatalf("error in listen: %s", err)
 		}
@@ -131,94 +135,4 @@ func main() {
 	}()
 	log.Println("initialized.")
 	wg.Wait()
-}
-
-func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
-	// log.Printf("got trapdata from %s\n", addr.IP)
-
-	if c.TrapServer.Community != packet.Community {
-		if c.Debug {
-			log.Printf("invalid community: expected %q, but received %q", c.TrapServer.Community, packet.Community)
-		}
-		return
-	}
-
-	var pad = make(map[string]string)
-	var specificTrapFormat string
-	var occurredAt = time.Now().Unix()
-
-	for _, v := range packet.Variables {
-		if strings.HasPrefix(v.Name, SnmpTrapOIDPrefix) {
-			for i := range c.Trap {
-				if strings.HasPrefix(v.Value.(string), c.Trap[i].Ident) {
-					specificTrapFormat = c.Trap[i].Format
-				}
-			}
-		}
-
-		var padKey, padValue string
-		padKey = v.Name
-		node, err := mibParser.FromOID(v.Name)
-		if err != nil {
-			fmt.Printf("%+v\n", err)
-		} else {
-			if node != nil {
-				padKey = node.Node.RenderQualified()
-			}
-
-			if node.Node.Type != nil && node.Node.Type.BaseType == types.BaseTypeEnum {
-				i, ok := v.Value.(int)
-				if ok {
-					padValue = node.Node.Type.Enum.Name(int64(i))
-				}
-			}
-		}
-		if padValue == "" {
-			switch v.Type {
-			case g.OctetString:
-				b := v.Value.([]byte)
-				padValue, err = decoder.Decode(addr.IP.String(), b)
-				if err != nil {
-					fmt.Printf("%+v\n", err)
-					padValue = "<cannot decode>"
-				}
-				// fmt.Printf("OID: %s, string: %s\n", v.Name, string(b))
-			case g.ObjectIdentifier:
-				valNode, err := mibParser.FromOID(v.Value.(string))
-				if err != nil {
-					fmt.Printf("%+v\n", err)
-					padValue = v.Value.(string)
-				} else {
-					padValue = valNode.Node.Name
-				}
-				// fmt.Printf("OID: %s, value: %s ObjectIdentifier: %s\n", v.Name, v.Value.(string), valNode.Node.Name)
-			default:
-				// fmt.Printf("trap: %+v\n", v)
-				padValue = fmt.Sprintf("%v", v.Value)
-			}
-		}
-
-		if padKey != "" && padValue != "" {
-			pad[padKey] = padValue
-		}
-	}
-
-	if specificTrapFormat == "" {
-		if c.Debug {
-			log.Printf("skip because nothing template : %+v\n", pad)
-		}
-		return
-	}
-
-	message, err := template.Execute(specificTrapFormat, pad, addr.IP.String())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	queue.Enqueue(notification.Item{
-		OccurredAt: occurredAt,
-		Addr:       addr.IP.String(),
-		Message:    message,
-	})
 }
