@@ -33,22 +33,22 @@ func main() {
 	}
 
 	// load config.
-	var c config.Config
-	err = yaml.Unmarshal(f, &c)
+	var conf config.Config
+	err = yaml.Unmarshal(f, &conf)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
 
 	// init mib parser
 	var mibParser smi.SMI
-	mibParser.Modules = c.MIB.LoadModules
-	mibParser.Paths = c.MIB.Directory
+	mibParser.Modules = conf.MIB.LoadModules
+	mibParser.Paths = conf.MIB.Directory
 	mibParser.Init()
 	defer mibParser.Close()
 
 	// template tests.
-	for i := range c.Trap {
-		if err := template.Parse(c.Trap[i].Format); err != nil {
+	for i := range conf.Trap {
+		if err := template.Parse(conf.Trap[i].Format); err != nil {
 			log.Fatalln(err)
 		}
 	}
@@ -56,41 +56,41 @@ func main() {
 	decoder := charset.NewDecoder()
 
 	// encoding tests.
-	for i := range c.Encoding {
-		if net.ParseIP(c.Encoding[i].Address) == nil {
-			log.Fatalf("can't parse ip : %q", c.Encoding[i].Address)
+	for i := range conf.Encoding {
+		if net.ParseIP(conf.Encoding[i].Address) == nil {
+			log.Fatalf("can't parse ip : %q", conf.Encoding[i].Address)
 		}
-		if err = decoder.Register(c.Encoding[i].Address, c.Encoding[i].Charset); err != nil {
+		if err = decoder.Register(conf.Encoding[i].Address, conf.Encoding[i].Charset); err != nil {
 			log.Fatalln(err)
 		}
 	}
 
-	if c.Mackerel.ApiKey == "" {
+	if conf.Mackerel.ApiKey == "" {
 		log.Fatalf("x-api-key isn't defined.")
 	}
-	if c.Mackerel.HostID == "" {
+	if conf.Mackerel.HostID == "" {
 		log.Fatalf("host-id isn't defined.")
 	}
 
 	var client *mackerel.Client
-	if c.Mackerel.ApiBase == "" {
-		client = mackerel.NewClient(c.Mackerel.ApiKey)
+	if conf.Mackerel.ApiBase == "" {
+		client = mackerel.NewClient(conf.Mackerel.ApiKey)
 	} else {
-		client, err = mackerel.NewClientWithOptions(c.Mackerel.ApiKey, c.Mackerel.ApiBase, false)
+		client, err = mackerel.NewClientWithOptions(conf.Mackerel.ApiKey, conf.Mackerel.ApiBase, false)
 		if err != nil {
 			log.Fatalf("invalid apibase: %s", err)
 		}
 	}
 
-	_, err = client.FindHost(c.Mackerel.HostID)
+	_, err = client.FindHost(conf.Mackerel.HostID)
 	if err != nil {
 		log.Fatalf("Either x-api-key or host-id is invalid.\n%s", err)
 	}
 
-	queue := notification.NewQueue(client, c.Mackerel.HostID)
+	queue := notification.NewQueue(client, conf.Mackerel.HostID)
 
 	handler := &Handler{
-		&c,
+		&conf,
 		queue,
 		&mibParser,
 		decoder,
@@ -100,7 +100,7 @@ func main() {
 	trapListener := g.NewTrapListener()
 	trapListener.OnNewTrap = handler.OnNewTrap
 	trapListener.Params = g.Default
-	if c.Debug {
+	if conf.Debug {
 		trapListener.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
 	}
 
@@ -114,7 +114,7 @@ func main() {
 
 	wg.Add(1)
 	go func() {
-		err = trapListener.Listen(net.JoinHostPort(c.TrapServer.Address, c.TrapServer.Port))
+		err = trapListener.Listen(net.JoinHostPort(conf.TrapServer.Address, conf.TrapServer.Port))
 		if err != nil {
 			log.Fatalf("error in listen: %s", err)
 		}
