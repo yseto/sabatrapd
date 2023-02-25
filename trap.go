@@ -90,9 +90,16 @@ func main() {
 
 	queue = notification.NewQueue(client, c.Mackerel.HostID)
 
+	handler := &Handler{
+		&c,
+		queue,
+		&mibParser,
+		decoder,
+	}
+
 	// trapListener
 	trapListener := g.NewTrapListener()
-	trapListener.OnNewTrap = trapHandler
+	trapListener.OnNewTrap = handler.OnNewTrap
 	trapListener.Params = g.Default
 	if c.Debug {
 		trapListener.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
@@ -135,12 +142,20 @@ func main() {
 	wg.Wait()
 }
 
-func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
-	// log.Printf("got trapdata from %s\n", addr.IP)
+type Handler struct {
+	Config    *config.Config
+	Queue     *notification.Queue
+	MibParser *smi.SMI
+	Decoder   *charset.Decoder
+}
 
-	if c.TrapServer.Community != packet.Community {
-		if c.Debug {
-			log.Printf("invalid community: expected %q, but received %q", c.TrapServer.Community, packet.Community)
+func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
+	// log.Printf("got trapdata from %s\n", addr.IP)
+	config := h.Config
+
+	if config.TrapServer.Community != packet.Community {
+		if config.Debug {
+			log.Printf("invalid community: expected %q, but received %q", config.TrapServer.Community, packet.Community)
 		}
 		return
 	}
@@ -151,16 +166,16 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 
 	for _, v := range packet.Variables {
 		if strings.HasPrefix(v.Name, SnmpTrapOIDPrefix) {
-			for i := range c.Trap {
-				if strings.HasPrefix(v.Value.(string), c.Trap[i].Ident) {
-					specificTrapFormat = c.Trap[i].Format
+			for i := range config.Trap {
+				if strings.HasPrefix(v.Value.(string), config.Trap[i].Ident) {
+					specificTrapFormat = config.Trap[i].Format
 				}
 			}
 		}
 
 		var padKey, padValue string
 		padKey = v.Name
-		node, err := mibParser.FromOID(v.Name)
+		node, err := h.MibParser.FromOID(v.Name)
 		if err != nil {
 			fmt.Printf("%+v\n", err)
 		} else {
@@ -179,14 +194,14 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 			switch v.Type {
 			case g.OctetString:
 				b := v.Value.([]byte)
-				padValue, err = decoder.Decode(addr.IP.String(), b)
+				padValue, err = h.Decoder.Decode(addr.IP.String(), b)
 				if err != nil {
 					fmt.Printf("%+v\n", err)
 					padValue = "<cannot decode>"
 				}
 				// fmt.Printf("OID: %s, string: %s\n", v.Name, string(b))
 			case g.ObjectIdentifier:
-				valNode, err := mibParser.FromOID(v.Value.(string))
+				valNode, err := h.MibParser.FromOID(v.Value.(string))
 				if err != nil {
 					fmt.Printf("%+v\n", err)
 					padValue = v.Value.(string)
@@ -206,7 +221,7 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	}
 
 	if specificTrapFormat == "" {
-		if c.Debug {
+		if config.Debug {
 			log.Printf("skip because nothing template : %+v\n", pad)
 		}
 		return
@@ -218,7 +233,7 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 		return
 	}
 
-	queue.Enqueue(notification.Item{
+	h.Queue.Enqueue(notification.Item{
 		OccurredAt: occurredAt,
 		Addr:       addr.IP.String(),
 		Message:    message,
