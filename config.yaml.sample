@@ -1,3 +1,6 @@
+mackerel:
+  x-api-key: ****
+  host-id: ****
 snmp:
   addr: 0.0.0.0
   port: 9162
@@ -23,9 +26,6 @@ trap:
     format: '{{ addr }} {{ read "IF-MIB::ifDescr" }} is linkdown'
   - ident: .1.3.6.1.6.3.1.1.5.4
     format: '{{ addr }} {{ read "IF-MIB::ifDescr" }} is linkup'
-mackerel:
-  x-api-key: ****
-  host-id: ****
 encoding:
 # - addr: 127.0.0.1
 #   charset: shift-jis
