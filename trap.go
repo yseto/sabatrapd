@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -22,9 +23,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var configFilename string
+var dryRun bool
+
+func init() {
+	flag.StringVar(&configFilename, "conf", "sabatrapd.yml", "config `filename`")
+	flag.BoolVar(&dryRun, "dry-run", false, "dry run mode")
+}
+
 func main() {
-	// TODO args.
-	f, err := os.ReadFile("config.yaml")
+	flag.Parse()
+
+	f, err := os.ReadFile(configFilename)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -35,6 +45,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
+	// merge dry-run argument.
+	conf.DryRun = (conf.DryRun || dryRun)
 
 	// init mib parser
 	var mibParser smi.SMI
