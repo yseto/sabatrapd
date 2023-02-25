@@ -65,7 +65,7 @@ func (q *Queue) send(item Item) {
 		{
 			Source:     mackerel.NewCheckSourceHost(q.hostId),
 			Status:     mackerel.CheckStatusWarning,
-			Name:       fmt.Sprintf("snmptrap %s", item.Addr),
+			Name:       fmt.Sprintf("sabatrapd %s", item.Addr),
 			Message:    message,
 			OccurredAt: item.OccurredAt,
 		},
