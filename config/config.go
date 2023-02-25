@@ -1,4 +1,6 @@
-package main
+package config
+
+import "github.com/yseto/sabatrapd/charset"
 
 type MIB struct {
 	Directory   []string `yaml:"directory"`
@@ -22,16 +24,9 @@ type Mackerel struct {
 	HostID  string `yaml:"host-id"`
 }
 
-type Charset = string
-
-const (
-	CharsetShiftJis Charset = "shift-jis"
-	CharsetUTF8     Charset = "utf-8"
-)
-
 type Encoding struct {
-	Address string  `yaml:"addr"`
-	Charset Charset `yaml:"charset"`
+	Address string          `yaml:"addr"`
+	Charset charset.Charset `yaml:"charset"`
 }
 
 type Config struct {

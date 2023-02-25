@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"container/list"
 	"context"
@@ -15,21 +14,23 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/yseto/sabatrapd/charset"
+	"github.com/yseto/sabatrapd/config"
+	"github.com/yseto/sabatrapd/smi"
+
 	g "github.com/gosnmp/gosnmp"
 	mackerel "github.com/mackerelio/mackerel-client-go"
 	"github.com/sleepinggenius2/gosmi/types"
-	"golang.org/x/text/encoding/japanese"
-	"golang.org/x/text/transform"
 	"gopkg.in/yaml.v3"
 )
 
 const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
 
-var mibParser SMI
-var c Config
+var mibParser smi.SMI
+var c config.Config
 var buffers = list.New()
 var mutex = &sync.Mutex{}
-var CharsetMap = make(map[string]Charset)
+var decoder = charset.NewDecoder()
 
 func main() {
 	// TODO args.
@@ -69,20 +70,13 @@ func main() {
 	}
 
 	// encoding tests.
-	encodings := []Charset{CharsetShiftJis, CharsetUTF8}
 	for i := range c.Encoding {
 		if net.ParseIP(c.Encoding[i].Address) == nil {
 			log.Fatalf("can't parse ip : %q", c.Encoding[i].Address)
 		}
-		ok := false
-		for j := range encodings {
-			if encodings[j] == c.Encoding[i].Charset {
-				ok = true
-				CharsetMap[c.Encoding[i].Address] = c.Encoding[i].Charset
-			}
-		}
-		if !ok {
-			log.Fatalf("charset is missing. %q", c.Encoding[i].Charset)
+		err = decoder.Register(c.Encoding[i].Address, c.Encoding[i].Charset)
+		if err != nil {
+			log.Fatal(err)
 		}
 	}
 
@@ -194,17 +188,10 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 			switch v.Type {
 			case g.OctetString:
 				b := v.Value.([]byte)
-				switch CharsetMap[addr.IP.String()] {
-				case CharsetShiftJis:
-					padValue, err = transformShiftJIS(b)
-					if err != nil {
-						fmt.Printf("%+v\n", err)
-						padValue = "<cannot decode>"
-					}
-				case CharsetUTF8:
-					fallthrough
-				default:
-					padValue = string(b)
+				padValue, err = decoder.Decode(addr.IP.String(), b)
+				if err != nil {
+					fmt.Printf("%+v\n", err)
+					padValue = "<cannot decode>"
 				}
 				// fmt.Printf("OID: %s, string: %s\n", v.Name, string(b))
 			case g.ObjectIdentifier:
@@ -259,13 +246,4 @@ func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
 		Message:    wr.String(),
 	})
 	mutex.Unlock()
-}
-
-func transformShiftJIS(b []byte) (string, error) {
-	scanner := bufio.NewScanner(transform.NewReader(bytes.NewBuffer(b), japanese.ShiftJIS.NewDecoder()))
-	var str string
-	for scanner.Scan() {
-		str += scanner.Text()
-	}
-	return str, scanner.Err()
 }
