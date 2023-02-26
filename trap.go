@@ -50,8 +50,10 @@ func main() {
 
 	// init mib parser
 	var mibParser smi.SMI
-	mibParser.Modules = conf.MIB.LoadModules
-	mibParser.Paths = conf.MIB.Directory
+	if conf.MIB != nil {
+		mibParser.Modules = conf.MIB.LoadModules
+		mibParser.Paths = conf.MIB.Directory
+	}
 	mibParser.Init()
 	defer mibParser.Close()
 
@@ -138,10 +140,10 @@ func main() {
 
 func checkMackerelConfig(conf *config.Mackerel) (*mackerel.Client, error) {
 	if conf == nil || conf.ApiKey == "" {
-		return nil, fmt.Errorf("x-api-key isn't defined.")
+		return nil, fmt.Errorf("x-api-key isn't defined")
 	}
 	if conf.HostID == "" {
-		return nil, fmt.Errorf("host-id isn't defined.")
+		return nil, fmt.Errorf("host-id isn't defined")
 	}
 
 	var client *mackerel.Client
@@ -158,7 +160,7 @@ func checkMackerelConfig(conf *config.Mackerel) (*mackerel.Client, error) {
 
 	_, err = client.FindHost(conf.HostID)
 	if err != nil {
-		return nil, fmt.Errorf("Either x-api-key or host-id is invalid: %s", err)
+		return nil, fmt.Errorf("either x-api-key or host-id is invalid: %s", err)
 	}
 	return client, nil
 }
