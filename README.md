@@ -189,7 +189,7 @@ sabatrapdをsystemd環境で自動起動している場合は、`/usr/local/etc/
 
 <hr>
 
-## インストール手順（GitHubリポジトリの利用）
+## セットアップ手順（GitHubリポジトリの利用）
 
 GitHubリポジトリからビルドする手順を紹介します。
 
