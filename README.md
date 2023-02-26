@@ -18,10 +18,16 @@ SNMP Trapとは、ネットワーク機器側からサーバーに状態の変�
 
 ## セットアップ
 
-[Goの開発環境](https://go.dev/dl/)をインストールした後、以下のコマンドでsabatrapdをインストールします。
+[Goの開発環境](https://go.dev/dl/)をインストールした後、以下のコマンドでsabatrapdをビルドします。
 
 ```
-go install github.com/yseto/sabatrapd@latest
+make
+```
+
+`make`コマンドが見つからないというエラーになった場合は、makeパッケージをインストールするか、あるいは次のコマンドでsabatrapdを直接ビルドしてください。
+
+```
+go build
 ```
 
 Mackerel側では、以下の作業をしておいてください。
@@ -157,11 +163,10 @@ sabatrapdはいくつかのオプションをとることができます。
 
 Linuxのsystemd環境で自動起動するファイルを、サンプルとして用意しています。
 
-1. このフォルダー内で`make`を実行します。`sabatrapd`ファイルが作成されます。
-2. `sudo make install`でインストールします。デフォルトでは`/usr/local/bin`フォルダーに`sabatrapd`が、`/usr/local/etc`フォルダーに設定ファイルが、systemd設定フォルダーに`sabatrapd.service`がコピーされます。なお、フォルダーは環境変数`DESTBINDIR`および`DESTETCDIR`で指定して`sudo -E make -e install`と渡すことで変更できます。
-3. `/usr/local/etc`フォルダーに配置された`sabatrapd.yml`を編集し、MackerelのAPI文字列などを設定します。
-4. プロキシーサーバーを利用する場合は、`/usr/local/etc`フォルダーに配置された`sabatrapd.env`に設定します。
-5. `sudo systemctl enable sabatrapd.service`でサービスを有効化します。
+1. `sudo make install`でインストールします。デフォルトでは`/usr/local/bin`フォルダーに`sabatrapd`が、`/usr/local/etc`フォルダーに設定ファイルが、systemd設定フォルダーに`sabatrapd.service`がコピーされます。なお、フォルダーは環境変数`DESTBINDIR`および`DESTETCDIR`で指定して`sudo -E make -e install`と渡すことで変更できます。
+2. `/usr/local/etc`フォルダーに配置された`sabatrapd.yml`を編集し、MackerelのAPI文字列などを設定します。
+3. プロキシーサーバーを利用する場合は、`/usr/local/etc`フォルダーに配置された`sabatrapd.env`に設定します。
+4. `sudo systemctl enable sabatrapd.service`でサービスを有効化します。
 
 状態やログについては`journalctl -u sabatrapd`で確認できます。
 
