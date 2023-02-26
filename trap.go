@@ -50,9 +50,14 @@ func main() {
 
 	// init mib parser
 	var mibParser smi.SMI
-	mibParser.Modules = conf.MIB.LoadModules
-	mibParser.Paths = conf.MIB.Directory
-	mibParser.Init()
+	if conf.MIB != nil {
+		mibParser.Modules = conf.MIB.LoadModules
+		mibParser.Paths = conf.MIB.Directory
+	}
+	err = mibParser.Init()
+	if err != nil {
+		log.Println(err)
+	}
 	defer mibParser.Close()
 
 	// template tests.
@@ -75,14 +80,18 @@ func main() {
 	}
 
 	var client *mackerel.Client
+	var hostid string
 	if !conf.DryRun {
 		client, err = checkMackerelConfig(conf.Mackerel)
 		if err != nil {
 			log.Fatalln(err)
 		}
+		hostid = conf.Mackerel.HostID
+	} else {
+		hostid = ""
 	}
 
-	queue := notification.NewQueue(client, conf.Mackerel.HostID)
+	queue := notification.NewQueue(client, hostid)
 
 	handle := &handler.Handler{
 		Config:    &conf,
@@ -92,6 +101,10 @@ func main() {
 	}
 
 	// trapListener
+	if conf.TrapServer == nil || conf.TrapServer.Address == "" || conf.TrapServer.Port == "" {
+		log.Fatalln("either addr or port isn't defined")
+	}
+
 	trapListener := g.NewTrapListener()
 	trapListener.OnNewTrap = handle.OnNewTrap
 	trapListener.Params = g.Default
@@ -138,10 +151,10 @@ func main() {
 
 func checkMackerelConfig(conf *config.Mackerel) (*mackerel.Client, error) {
 	if conf == nil || conf.ApiKey == "" {
-		return nil, fmt.Errorf("x-api-key isn't defined.")
+		return nil, fmt.Errorf("x-api-key isn't defined")
 	}
 	if conf.HostID == "" {
-		return nil, fmt.Errorf("host-id isn't defined.")
+		return nil, fmt.Errorf("host-id isn't defined")
 	}
 
 	var client *mackerel.Client
@@ -158,7 +171,7 @@ func checkMackerelConfig(conf *config.Mackerel) (*mackerel.Client, error) {
 
 	_, err = client.FindHost(conf.HostID)
 	if err != nil {
-		return nil, fmt.Errorf("Either x-api-key or host-id is invalid: %s", err)
+		return nil, fmt.Errorf("either x-api-key or host-id is invalid: %s", err)
 	}
 	return client, nil
 }
