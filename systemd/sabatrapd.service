@@ -1,0 +1,11 @@
+[Unit]
+Description=SNMP Trap Handler for Mackerel
+Documentation=https://github.com/yseto/sabatrapd
+After=network.target
+
+[Service]
+EnvironmentFile=-%DESTETCDIR%/sabatrapd.env
+ExecStart=/usr/bin/sabatrapd %DESTETCDIR%/sabatrapd.yml
+
+[Install]
+WantedBy=multi-user.target

@@ -1,101 +1,119 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"container/list"
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
-	"text/template"
 	"time"
+
+	"github.com/yseto/sabatrapd/charset"
+	"github.com/yseto/sabatrapd/config"
+	"github.com/yseto/sabatrapd/handler"
+	"github.com/yseto/sabatrapd/notification"
+	"github.com/yseto/sabatrapd/smi"
+	"github.com/yseto/sabatrapd/template"
 
 	g "github.com/gosnmp/gosnmp"
 	mackerel "github.com/mackerelio/mackerel-client-go"
-	"github.com/sleepinggenius2/gosmi/types"
-	"golang.org/x/text/encoding/japanese"
-	"golang.org/x/text/transform"
 	"gopkg.in/yaml.v3"
 )
 
-const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
+var configFilename string
+var dryRun bool
 
-var mibParser SMI
-var c Config
-var buffers = list.New()
-var mutex = &sync.Mutex{}
-var CharsetMap = make(map[string]Charset)
+func init() {
+	flag.StringVar(&configFilename, "conf", "sabatrapd.yml", "config `filename`")
+	flag.BoolVar(&dryRun, "dry-run", false, "dry run mode")
+}
 
 func main() {
-	// TODO args.
-	f, err := os.ReadFile("config.yaml")
+	flag.Parse()
+
+	f, err := os.ReadFile(configFilename)
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// load config.
-	err = yaml.Unmarshal(f, &c)
+	var conf config.Config
+	err = yaml.Unmarshal(f, &conf)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
+	// merge dry-run argument.
+	conf.DryRun = (conf.DryRun || dryRun)
 
 	// init mib parser
-	mibParser.Modules = c.MIB.LoadModules
-	mibParser.Paths = c.MIB.Directory
-	mibParser.Init()
+	var mibParser smi.SMI
+	if conf.MIB != nil {
+		mibParser.Modules = conf.MIB.LoadModules
+		mibParser.Paths = conf.MIB.Directory
+	}
+	err = mibParser.Init()
+	if err != nil {
+		log.Println(err)
+	}
 	defer mibParser.Close()
 
 	// template tests.
-	funcmap := template.FuncMap{
-		"read": func(key string) string {
-			return "dummy"
-		},
-		"addr": func() string {
-			return "dummy"
-		},
-	}
-
-	var tmpl = template.New("").Funcs(funcmap)
-
-	for i := range c.Trap {
-		if _, err := tmpl.Parse(c.Trap[i].Format); err != nil {
+	for i := range conf.Trap {
+		if err := template.Parse(conf.Trap[i].Format); err != nil {
 			log.Fatalln(err)
 		}
 	}
 
+	decoder := charset.NewDecoder()
+
 	// encoding tests.
-	encodings := []Charset{CharsetShiftJis, CharsetUTF8}
-	for i := range c.Encoding {
-		if net.ParseIP(c.Encoding[i].Address) == nil {
-			log.Fatalf("cant parse ip : %q", c.Encoding[i].Address)
+	for i := range conf.Encoding {
+		if net.ParseIP(conf.Encoding[i].Address) == nil {
+			log.Fatalf("can't parse ip : %q", conf.Encoding[i].Address)
 		}
-		ok := false
-		for j := range encodings {
-			if encodings[j] == c.Encoding[i].Charset {
-				ok = true
-				CharsetMap[c.Encoding[i].Address] = c.Encoding[i].Charset
-			}
-		}
-		if !ok {
-			log.Fatalf("charset is missing. %q", c.Encoding[i].Charset)
+		if err = decoder.Register(conf.Encoding[i].Address, conf.Encoding[i].Charset); err != nil {
+			log.Fatalln(err)
 		}
 	}
 
-	// trapListner
-	trapListner := g.NewTrapListener()
-	trapListner.OnNewTrap = trapHandler
-	trapListner.Params = g.Default
-	trapListner.Params.Community = c.TrapServer.Community
-	if c.Debug {
-		trapListner.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
+	var client *mackerel.Client
+	var hostid string
+	if !conf.DryRun {
+		client, err = checkMackerelConfig(conf.Mackerel)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		hostid = conf.Mackerel.HostID
+	} else {
+		hostid = ""
 	}
 
-	client := mackerel.NewClient(c.Mackerel.ApiKey)
+	queue := notification.NewQueue(client, hostid)
+
+	handle := &handler.Handler{
+		Config:    &conf,
+		Queue:     queue,
+		MibParser: &mibParser,
+		Decoder:   decoder,
+	}
+
+	// trapListener
+	if conf.TrapServer == nil || conf.TrapServer.Address == "" || conf.TrapServer.Port == "" {
+		log.Fatalln("either addr or port isn't defined")
+	}
+
+	trapListener := g.NewTrapListener()
+	trapListener.OnNewTrap = handle.OnNewTrap
+	trapListener.Params = g.Default
+	if conf.Debug {
+		trapListener.Params.Logger = g.NewLogger(log.New(os.Stdout, "<GOSNMP DEBUG LOGGER>", 0))
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
 	wg := sync.WaitGroup{}
 
@@ -104,7 +122,7 @@ func main() {
 
 	wg.Add(1)
 	go func() {
-		err = trapListner.Listen(net.JoinHostPort(c.TrapServer.Address, c.TrapServer.Port))
+		err = trapListener.Listen(net.JoinHostPort(conf.TrapServer.Address, conf.TrapServer.Port))
 		if err != nil {
 			log.Fatalf("error in listen: %s", err)
 		}
@@ -117,129 +135,43 @@ func main() {
 		for {
 			select {
 			case <-t.C:
-				sendToMackerel(ctx, client, c.Mackerel.HostID)
+				queue.Dequeue(ctx)
 
 			case <-ctx.Done():
-				trapListner.Close()
-				log.Println("trapListner is close.")
+				trapListener.Close()
+				log.Println("trapListener is closed.")
 				log.Println("cancellation from context:", ctx.Err())
 				return
 			}
 		}
 	}()
-	log.Println("initialized.")
+	log.Printf("initialized. %s mode\n", conf.RunningMode())
 	wg.Wait()
 }
 
-func trapHandler(packet *g.SnmpPacket, addr *net.UDPAddr) {
-	// log.Printf("got trapdata from %s\n", addr.IP)
+func checkMackerelConfig(conf *config.Mackerel) (*mackerel.Client, error) {
+	if conf == nil || conf.ApiKey == "" {
+		return nil, fmt.Errorf("x-api-key isn't defined")
+	}
+	if conf.HostID == "" {
+		return nil, fmt.Errorf("host-id isn't defined")
+	}
 
-	var pad = make(map[string]string)
-	var specificTrapFormat string
-	var occurredAt = time.Now().Unix()
+	var client *mackerel.Client
+	var err error
 
-	for _, v := range packet.Variables {
-		if strings.HasPrefix(v.Name, SnmpTrapOIDPrefix) {
-			for i := range c.Trap {
-				if strings.HasPrefix(v.Value.(string), c.Trap[i].Ident) {
-					specificTrapFormat = c.Trap[i].Format
-				}
-			}
-		}
-
-		var padKey, padValue string
-		padKey = v.Name
-		node, err := mibParser.FromOID(v.Name)
+	if conf.ApiBase == "" {
+		client = mackerel.NewClient(conf.ApiKey)
+	} else {
+		client, err = mackerel.NewClientWithOptions(conf.ApiKey, conf.ApiBase, false)
 		if err != nil {
-			fmt.Printf("%+v\n", err)
-		} else {
-			if node != nil {
-				padKey = node.Node.RenderQualified()
-			}
-
-			if node.Node.Type != nil && node.Node.Type.BaseType == types.BaseTypeEnum {
-				i, ok := v.Value.(int)
-				if ok {
-					padValue = node.Node.Type.Enum.Name(int64(i))
-				}
-			}
-		}
-		if padValue == "" {
-			switch v.Type {
-			case g.OctetString:
-				b := v.Value.([]byte)
-				switch CharsetMap[addr.IP.String()] {
-				case CharsetShiftJis:
-					padValue, err = transformShiftJIS(b)
-					if err != nil {
-						fmt.Printf("%+v\n", err)
-						padValue = "<can not decode>"
-					}
-				case CharsetUTF8:
-					fallthrough
-				default:
-					padValue = string(b)
-				}
-				// fmt.Printf("OID: %s, string: %s\n", v.Name, string(b))
-			case g.ObjectIdentifier:
-				valNode, err := mibParser.FromOID(v.Value.(string))
-				if err != nil {
-					fmt.Printf("%+v\n", err)
-					padValue = v.Value.(string)
-				} else {
-					padValue = valNode.Node.Name
-				}
-				// fmt.Printf("OID: %s, value: %s ObjectIdentifier: %s\n", v.Name, v.Value.(string), valNode.Node.Name)
-			default:
-				// fmt.Printf("trap: %+v\n", v)
-				padValue = fmt.Sprintf("%v", v.Value)
-			}
-		}
-
-		if padKey != "" && padValue != "" {
-			pad[padKey] = padValue
+			return nil, fmt.Errorf("invalid apibase: %s", err)
 		}
 	}
 
-	if specificTrapFormat == "" {
-		if c.Debug {
-			log.Printf("skip because nothing template : %+v\n", pad)
-		}
-		return
+	_, err = client.FindHost(conf.HostID)
+	if err != nil {
+		return nil, fmt.Errorf("either x-api-key or host-id is invalid: %s", err)
 	}
-
-	funcmap := template.FuncMap{
-		"read": func(key string) string {
-			return fmt.Sprintf("%s", pad[key])
-		},
-		"addr": func() string {
-			return addr.IP.String()
-		},
-	}
-
-	// fmt.Printf("%+v\n", pad)
-
-	var tpl = template.New("").Funcs(funcmap)
-
-	var wr bytes.Buffer
-	if err := template.Must(tpl.Parse(specificTrapFormat)).Execute(&wr, pad); err != nil {
-		log.Println(err)
-	}
-
-	mutex.Lock()
-	buffers.PushBack(mackerelCheck{
-		OccurredAt: occurredAt,
-		Addr:       addr.IP.String(),
-		Message:    wr.String(),
-	})
-	mutex.Unlock()
-}
-
-func transformShiftJIS(b []byte) (string, error) {
-	scanner := bufio.NewScanner(transform.NewReader(bytes.NewBuffer(b), japanese.ShiftJIS.NewDecoder()))
-	var str string
-	for scanner.Scan() {
-		str += scanner.Text()
-	}
-	return str, scanner.Err()
+	return client, nil
 }
