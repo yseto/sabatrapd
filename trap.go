@@ -54,7 +54,10 @@ func main() {
 		mibParser.Modules = conf.MIB.LoadModules
 		mibParser.Paths = conf.MIB.Directory
 	}
-	mibParser.Init()
+	err = mibParser.Init()
+	if err != nil {
+		log.Println(err)
+	}
 	defer mibParser.Close()
 
 	// template tests.
@@ -77,14 +80,18 @@ func main() {
 	}
 
 	var client *mackerel.Client
+	var hostid string
 	if !conf.DryRun {
 		client, err = checkMackerelConfig(conf.Mackerel)
 		if err != nil {
 			log.Fatalln(err)
 		}
+		hostid = conf.Mackerel.HostID
+	} else {
+		hostid = ""
 	}
 
-	queue := notification.NewQueue(client, conf.Mackerel.HostID)
+	queue := notification.NewQueue(client, hostid)
 
 	handle := &handler.Handler{
 		Config:    &conf,
@@ -94,6 +101,10 @@ func main() {
 	}
 
 	// trapListener
+	if conf.TrapServer == nil || conf.TrapServer.Address == "" || conf.TrapServer.Port == "" {
+		log.Fatalln("either addr or port isn't defined")
+	}
+
 	trapListener := g.NewTrapListener()
 	trapListener.OnNewTrap = handle.OnNewTrap
 	trapListener.Params = g.Default
