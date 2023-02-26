@@ -40,14 +40,17 @@ func (q *Queue) Enqueue(item Item) {
 }
 
 func (q *Queue) Dequeue(ctx context.Context) {
-	// log.Infof("buffers len: %d", q.q.Len())
 	if q.q.Len() == 0 {
 		return
 	}
 
 	e := q.q.Front()
-	// log.Infof("send current value: %#v", e.Value)
-	q.send(e.Value.(Item))
+	item := e.Value.(Item)
+	if q.client == nil {
+		log.Printf("receive %q %q\n", item.Addr, item.Message)
+	} else {
+		q.send(item)
+	}
 	q.m.Lock()
 	q.q.Remove(e)
 	q.m.Unlock()
@@ -65,7 +68,7 @@ func (q *Queue) send(item Item) {
 		{
 			Source:     mackerel.NewCheckSourceHost(q.hostId),
 			Status:     mackerel.CheckStatusWarning,
-			Name:       fmt.Sprintf("snmptrap %s", item.Addr),
+			Name:       fmt.Sprintf("sabatrapd %s", item.Addr),
 			Message:    message,
 			OccurredAt: item.OccurredAt,
 		},

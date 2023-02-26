@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -21,9 +23,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var configFilename string
+var dryRun bool
+
+func init() {
+	flag.StringVar(&configFilename, "conf", "sabatrapd.yml", "config `filename`")
+	flag.BoolVar(&dryRun, "dry-run", false, "dry run mode")
+}
+
 func main() {
-	// TODO args.
-	f, err := os.ReadFile("config.yaml")
+	flag.Parse()
+
+	f, err := os.ReadFile(configFilename)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -34,6 +45,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
+	// merge dry-run argument.
+	conf.DryRun = (conf.DryRun || dryRun)
 
 	// init mib parser
 	var mibParser smi.SMI
@@ -61,26 +74,12 @@ func main() {
 		}
 	}
 
-	if conf.Mackerel.ApiKey == "" {
-		log.Fatalf("x-api-key isn't defined.")
-	}
-	if conf.Mackerel.HostID == "" {
-		log.Fatalf("host-id isn't defined.")
-	}
-
 	var client *mackerel.Client
-	if conf.Mackerel.ApiBase == "" {
-		client = mackerel.NewClient(conf.Mackerel.ApiKey)
-	} else {
-		client, err = mackerel.NewClientWithOptions(conf.Mackerel.ApiKey, conf.Mackerel.ApiBase, false)
+	if !conf.DryRun {
+		client, err = checkMackerelConfig(conf.Mackerel)
 		if err != nil {
-			log.Fatalf("invalid apibase: %s", err)
+			log.Fatalln(err)
 		}
-	}
-
-	_, err = client.FindHost(conf.Mackerel.HostID)
-	if err != nil {
-		log.Fatalf("Either x-api-key or host-id is invalid.\n%s", err)
 	}
 
 	queue := notification.NewQueue(client, conf.Mackerel.HostID)
@@ -133,6 +132,33 @@ func main() {
 			}
 		}
 	}()
-	log.Println("initialized.")
+	log.Printf("initialized. %s mode\n", conf.RunningMode())
 	wg.Wait()
+}
+
+func checkMackerelConfig(conf *config.Mackerel) (*mackerel.Client, error) {
+	if conf == nil || conf.ApiKey == "" {
+		return nil, fmt.Errorf("x-api-key isn't defined.")
+	}
+	if conf.HostID == "" {
+		return nil, fmt.Errorf("host-id isn't defined.")
+	}
+
+	var client *mackerel.Client
+	var err error
+
+	if conf.ApiBase == "" {
+		client = mackerel.NewClient(conf.ApiKey)
+	} else {
+		client, err = mackerel.NewClientWithOptions(conf.ApiKey, conf.ApiBase, false)
+		if err != nil {
+			return nil, fmt.Errorf("invalid apibase: %s", err)
+		}
+	}
+
+	_, err = client.FindHost(conf.HostID)
+	if err != nil {
+		return nil, fmt.Errorf("Either x-api-key or host-id is invalid: %s", err)
+	}
+	return client, nil
 }
