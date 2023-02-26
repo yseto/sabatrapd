@@ -24,42 +24,56 @@ SNMP Trapとは、ネットワーク機器側からサーバーに状態の変�
 go install github.com/yseto/sabatrapd@latest
 ```
 
+Mackerel側では、以下の作業をしておいてください。
+
+1. 投稿先のMackerelのオーガニゼーションにチェック監視の送り先となるスタンダードホストを用意します。
+2. MackerelのオーガニゼーションからAPI（書き込み権限）を払い出します。
+
 ## 設定
 
 sabatrapdの設定はYAMLファイルで行います。
 
-★にある`config.yaml.sample`ファイルを`config.yaml`という名前にコピーしてください。
+`sabatrapd.yml.sample`ファイルを`sabatrapd.yaml`という名前にコピーしてください。
 
-### 基本設定
+YAMLファイルにMackerelオーガニゼーションのAPI文字列とホストIDを記述します。
 
-1. 投稿先のMackerelのオーガニゼーションに、チェック監視の送り先となるスタンダードホストを用意しておきます。
-2. MackerelのオーガニゼーションからAPI（書き込み権限）を払い出します。
-3. YAMLファイルにAPI文字列とホストIDを記述します。
+```
+mackerel:
+  x-api-key: API文字列
+  host-id: ホストID
+```
 
-   ```
-   mackerel:
-     x-api-key: API文字列
-     host-id: ホストID
-   ```
+次に、snmptrapdがサービスとして監視するIPアドレス、ポート番号、それにSNMPコミュニティ名を指定します。
 
-4. snmptrapdがサービスとして監視するIPアドレス、ポート番号、それにSNMPコミュニティ名を指定します。
+```
+snmp:
+  addr: 0.0.0.0
+  port: 9162
+  community: public
+```
 
-   ```
-   snmp:
-     addr: 0.0.0.0
-     port: 9162
-     community: public
-   ```
+- 上記の設定では、IPv4アドレスで到達可能な範囲からのアクセスを受け付け（`0.0.0.0`）、ポート番号は9162（UDP）を使用、SNMPコミュニティはpublicとしています。
+- SNMP Trapを送る機器で送信先ポート指定をできない場合は、ポート番号を標準ポートである「162」にする必要がありますが、sabatrapdをroot権限で実行しなければなりません。
+- SNMPコミュニティの名前はSNMP Trapを送る機器に合わせます。コミュニティの異なるSNMP Trapは無視されます。
+- SNMPコミュニティ設定は1つのみ指定できます。複数のSNMPコミュニティで運用しなければならないときには、`community`行を削除して、コミュニティの名前照合をスキップするようにしてください。
 
-   上記の設定では、IPv4アドレスで到達可能な範囲からのアクセスを受け付け（`0.0.0.0`）、ポート番号は9162（UDP）を使用、SNMPコミュニティはpublicとしています。
+## 実行
 
-    SNMP Trapを送る機器で送信先ポート指定をできない場合は、ポート番号を標準ポートである「162」にする必要がありますが、sabatrapdをroot権限で実行しなければなりません。
+```
+$GOPATH/bin/sabatrapd -conf sabatrapd.yml
+```
 
-    SNMPコミュニティの名前はSNMP Trapを送る機器に合わせます。コミュニティの異なるSNMP Trapは無視されます。複数の設定はできないため、複数のSNMPコミュニティで運用しなければならないときには、`community`行を削除して、コミュニティの名前照合をスキップするようにしてください。
+(★★TBD)
+
+SNMP Trapをsnmptrapdに送ると、捕捉対象のものだったときにはMackerelにすぐにアラートが通知されます。
+
+![チェック監視のアラート](./images/alert.png)
+
+`debug`設定を`true`にすると、受け取ったSNMP Trapメッセージや詳細なログが出力されるようになります。SNMP Trapメッセージをうまく処理できないときにご利用ください。
 
 ### 詳細設定
 
-ここからの手順は、より高度な設定・カスタマイズについての説明なので、すぐに試すために「実行」に進んでもかまいません。
+より高度な設定・カスタマイズについて説明します。
 
 #### MIBの用意
 
@@ -76,9 +90,9 @@ mib:
     - IF-MIB
 ```
 
-`directory`にMIBファイルを格納するフォルダ、`modules`に読み込むMIBファイル名を列挙します。★★子フォルダの探索はしないので、MIBファイルは`directory` のフォルダの直下に置いてください。
+`directory`にMIBファイルを格納するフォルダ、`modules`に読み込むMIBファイル名を列挙します。子フォルダの探索はしないので、MIBファイルは`directory` のフォルダの直下に置いてください。
 
-MIBファイルはベンダー各社から提供されています。Debian/Ubuntuの場合は、snmp-mibs-downloaderパッケージ（non-freeセクション）をインストールすると、`/var/lib/mibs/ietf` フォルダに`SNMPv2-MIB`や`IF-MIB`などのMIBファイルが置かれます。
+MIBファイルはベンダー各社から提供されています。たとえばDebian/Ubuntuの場合は、snmp-mibs-downloaderパッケージ（non-freeセクション）をインストールすると、`/var/lib/mibs/ietf` フォルダに`SNMPv2-MIB`や`IF-MIB`などのMIBファイルが置かれます。
 
 ### SNMP Trap捕捉メッセージの設定
 
@@ -109,8 +123,6 @@ trap:
 
 SNMP Trapを捕捉しすぎると、無用なアラートがMackerelで多発することになります。緊急性の高い最低限のもののみ設定するようにすることをお勧めします。
 
-実際、上記の設定でもcold start・warm start・linkupについて捕捉していますが、これは試すことを目的としているもので、実際の運用ではアラートにはしないほうがよいでしょう。
-
 ### ネットワーク機器ごとの文字エンコーディング設定
 
 一部のネットワーク機器では、Shift JISエンコーディングの日本語メッセージを発行することがあります。Mackerelに投稿する際にはUTF-8エンコーディングでなければならないため、ネットワーク機器のIPアドレスを明示して変換対象とするようにします。
@@ -131,27 +143,13 @@ encoding:
 export HTTPS_PROXY=https://proxyserver:8443
 ```
 
-## 実行
-
-```
-$GOPATH/bin/sabatrapd YAMLファイル
-```
-
-★★
-
-SNMP Trapをsnmptrapdに送ると、捕捉対象のものだったときにはMackerelにすぐにアラートが通知されます。
-
-![チェック監視のアラート](./images/alert.png)
-
-`debug`設定を`true`にすると、受け取ったSNMP Trapメッセージや詳細なログが出力されるようになります。SNMP Trapメッセージをうまく処理できないときにご利用ください。
-
 ## 起動の自動化
 
-★★
+(★★TBD)
 
 ## ライセンス
 
-Copyright 2023 yseto
+Copyright 2023 yseto and Kenshi Muto
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
