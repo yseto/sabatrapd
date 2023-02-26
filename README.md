@@ -31,7 +31,7 @@ Mackerel側では、以下の作業をしておいてください。
 
 ## 設定
 
-sabatrapdの設定はYAMLファイルで行います。
+sabatrapdの設定はYAML形式のファイルで行います。
 
 `sabatrapd.yml.sample`ファイルを`sabatrapd.yaml`という名前にコピーしてください。
 
@@ -65,7 +65,7 @@ snmp:
 $GOPATH/bin/sabatrapd
 ```
 
-SNMP Trapをsnmptrapdに送ると、捕捉対象のものだったときにはMackerelにすぐにアラートが通知されます。
+SNMP Trapをsnmptrapdに送ると、捕捉対象のものだったときにはMackerelに投稿され、Mackerelからすぐにアラートが発報されます。
 
 ![チェック監視のアラート](./images/alert.png)
 
@@ -73,7 +73,7 @@ SNMP Trapをsnmptrapdに送ると、捕捉対象のものだったときにはMa
 
 ### 詳細設定
 
-より高度な設定・カスタマイズについて説明します。
+sabatrapdのより高度な設定およびカスタマイズについて説明します。
 
 #### MIBの用意
 
@@ -84,15 +84,18 @@ MIB（Management Information Base）ファイルをsabatrapdに登録すると�
 ```
 mib:
   directory:
-    - "/var/lib/snmp/mibs/ietf/"
+    - "/usr/share/snmp/mibs/"
   modules:
     - SNMPv2-MIB
     - IF-MIB
 ```
 
-`directory`にMIBファイルを格納するフォルダーを指定し、`modules`に読み込むMIBファイル名を列挙します。子フォルダーは探索しないので、MIBファイルは`directory` のフォルダーの直下に置いてください。
+`directory`にMIBファイルを格納するフォルダーを指定し、`modules`に読み込むMIBファイル名を列挙します。子フォルダーは探索しないので、MIBファイルは`directory`のフォルダーの直下に置いてください。
 
-MIBファイルはベンダー各社から提供されています。たとえばDebian/Ubuntuの場合は、snmp-mibs-downloaderパッケージ（non-freeセクション）をインストールすると、`/var/lib/mibs/ietf` フォルダーに`SNMPv2-MIB`や`IF-MIB`などのMIBファイルが置かれます。
+MIBファイルはベンダー各社から提供されています。
+
+- Red Hat Enterprise Linuxやその派生ディストリビューションの場合は、net-snmp-libsパッケージをインストールすると、`/usr/share/snmp/mibs/`フォルダーに`SNMPv2-MIB`や`IF-MIB`などのMIBファイルが置かれます。
+- Debian GNU/Linux・Ubuntuの場合は、snmp-mibs-downloaderパッケージ（non-freeセクション）をインストールすると、`/var/lib/mibs/ietf/`フォルダーに`SNMPv2-MIB`や`IF-MIB`などのMIBファイルが置かれます。
 
 ### SNMP Trap捕捉メッセージの設定
 
@@ -132,12 +135,12 @@ SNMP Trapを捕捉しすぎると、無用なアラートがMackerelで多発す
 ```
 encoding:
   - addr: 192.168.1.200
-   charset: shift-jis
+    charset: shift-jis
 ```
 
-### プロキシの設定
+### プロキシーの設定
 
-インターネットに接続するのにプロキシサーバーを利用している場合は、環境変数`HTTPS_PROXY`にプロキシサーバーを設定してからsabatrapdを実行してください。
+インターネットに接続するのにプロキシーサーバーを利用している場合は、環境変数`HTTPS_PROXY`にプロキシーサーバーを設定してからsabatrapdを実行してください。
 
 ```
 export HTTPS_PROXY=https://proxyserver:8443
@@ -152,7 +155,16 @@ sabatrapdはいくつかのオプションをとることができます。
 
 ## 起動の自動化
 
-(★★TBD)
+Linuxのsystemd環境で自動起動するファイルを、サンプルとして用意しています。
+
+1. このフォルダー内で`make`を実行します。`sabatrapd`ファイルが作成されます。
+2. `sudo make install`でインストールします。デフォルトでは`/usr/local/bin`フォルダーに`sabatrapd`が、`/usr/local/etc`フォルダーに設定ファイルが、systemd設定フォルダーに`sabatrapd.service`がコピーされます。
+  - フォルダーは、環境変数`DESTBINDIR`および`DESTETCDIR`でパスを指定して`sudo -E make -e install`と渡すことで変更できます。
+3. `/usr/local/etc`フォルダーに配置された`sabatrapd.yml`のAPI文字列などを設定します。
+4. プロキシーサーバーを利用する場合は、`/usr/local/etc`フォルダーに配置された`sabatrapd.env`に設定します。
+5. `sudo systemctl enable sabatrapd.service`でサービスを有効化します。
+
+状態やログについては`journalctl -u sabatrapd`で確認できます。
 
 ## ライセンス
 
