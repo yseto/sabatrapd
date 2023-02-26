@@ -16,32 +16,39 @@ SNMP Trapとは、ネットワーク機器側からサーバーに状態の変�
 - プロトコルはSNMP v2cのみに対応しています。
 - SNMP Trapの内容は「WARNING」としてMackerelに投稿され、アラートになります。SNMP Trapの原因が解消されてもsabatrapdでは関知できないので、Mackerel上でアラートを手動で閉じる必要があります。そのため、SNMP Trapの捕捉は最小限に留めることを推奨します。
 
-## セットアップ
+## セットアップ手順（リリースアーカイブの利用）
 
-[Goの開発環境](https://go.dev/dl/)をインストールした後、以下のコマンドでsabatrapdをビルドします。
+sabatrapdのリリースアーカイブを使うと、プログラミング環境を用意することなく、すぐに試すことができます。
+
+### ダウンロードと展開
+
+[リリースページ](https://github.com/yseto/sabatrapd/releases)から、インストール対象のアーキテクチャ（amd64またはarm64）に合ったtar.gz形式のアーカイブファイルをダウンロードします。
+
+適当なフォルダーを用意し、`tar`コマンドで展開してください。例として、新規に`sabatrapd-dist`フォルダーを作り、ダウンロードフォルダーにあるファイルをそこに展開する場合の操作を以下に示します。
 
 ```
-make
+$ mkdir sabatrapd-dist
+$ cd sabatrapd-dist
+$ tar xvf ~/Downloads/sabatrapd_linux_amd64.tar.gz
+sabatrapd.yml.sample
+systemd/sabatrapd.env
+ ...
 ```
 
-`make`コマンドが見つからないというエラーになった場合は、makeパッケージをインストールするか、あるいは次のコマンドでsabatrapdを直接ビルドしてください。
-
-```
-go build
-```
+### Mackerelの準備
 
 Mackerel側では、以下の作業をしておいてください。
 
 1. 投稿先のMackerelのオーガニゼーションに、チェック監視の投稿先となるスタンダードホストを用意します。
 2. MackerelのオーガニゼーションからAPI（書き込み権限）を払い出します。
 
-## 設定
+### sabatrapd.ymlの作成
 
 sabatrapdの設定はYAML形式のファイルで行います。
 
 `sabatrapd.yml.sample`ファイルを`sabatrapd.yaml`という名前にコピーしてください。
 
-`sabatrapd.yml`ファイルに、MackerelオーガニゼーションのAPI文字列とホストIDを記述します。
+`sabatrapd.yml`ファイルをエディターで開き、MackerelオーガニゼーションのAPI文字列とホストIDを記述します。
 
 ```
 mackerel:
@@ -59,29 +66,53 @@ snmp:
 ```
 
 - 上記の設定では、IPv4アドレスで到達可能な範囲からのアクセスを受け付け（`0.0.0.0`）、ポート番号は9162（UDP）を使用、SNMPコミュニティは「public」としています。
-- SNMP Trapを送る機器上で送信先ポートを指定できないときには、sabatrapd側の監視ポート番号を標準ポートである「162」にします。この場合、sabatrapdをroot権限で実行する必要があります。
+- SNMP Trapを送る機器上で送信先ポートを指定できないときには、sabatrapd側の監視ポート番号を標準ポートである「162」にします。ただし、このポートで動作させるには管理者権限で実行する必要があります。
 - SNMPコミュニティの名前はSNMP Trapを送る機器に合わせます。コミュニティの異なるSNMP Trapは無視されます。
 - SNMPコミュニティ設定は1つのみ指定できます。複数のSNMPコミュニティで運用しなければならないときには、`community`行を削除して、コミュニティの名前照合をスキップするようにしてください。
 
-## 実行
+### 実行
 
-`sabatrapd.yml`の置いてあるフォルダーで、sabatrapdを起動します。
+`sabatrapd.yml`を保存したら、いよいよsabatrapdを起動します（Ctrl+cキーを押せば終了します）。
 
 ```
-$GOPATH/bin/sabatrapd
+./sabatrapd
 ```
 
-SNMP Trapをsnmptrapdに送ると、捕捉対象のものだったときにはMackerelに投稿され、Mackerelからすぐにアラートが発報されます。
+ネットワーク機器からSNMP Trap（たとえばイーサーネットケーブルの抜き差し）をsnmptrapdに送ってみると、捕捉対象のものだったときにはMackerelに投稿され、Mackerelからすぐにアラートが発報されます。
 
 ![チェック監視のアラート](./images/alert.png)
 
-`debug`設定を`true`にすると、受け取ったSNMP Trapメッセージや詳細なログが出力されます。SNMP Trapメッセージをうまく処理できないときにご利用ください。
+`sabatrapd.yml`の`debug`設定を`true`にすると、受け取ったSNMP Trapメッセージや詳細なログが出力されます。SNMP Trapメッセージをうまく処理できないときにご利用ください。
 
-### 詳細設定
+sabatrapdはいくつかのオプションをとることができます。
+
+- `-conf <設定ファイル>`: 設定YAMLファイルを指定します。このオプションを省略したときには、デフォルトでカレントフォルダーにある`sabatrapd.yml`を参照します。
+- `-dry-run`: Mackerelにメッセージを投稿しないモードで動作します。Mackerelでの本番の監視の前に、SNMP Trapの挙動を確認したいときに指定します。
+
+### インストール
+
+Linuxのsystemd環境で自動起動させるためのファイルを用意しています。
+
+正常に稼働する`sabatrapd.yml`を用意できたら、インストーラーの`install.sh`を管理者権限で実行してください。
+
+```
+$ sudo ./install.sh
+sabatrapd installation is finished.
+/usr/local/etc/sabatrapd.yml will be used.
+To check sabatrapd's status, type 'journalctl -u sabatrapd'
+```
+
+デフォルトでは`/usr/local/bin`フォルダーに`sabatrapd`実行ファイルが、`/usr/local/etc`フォルダーに設定ファイルが、systemd設定フォルダーに`sabatrapd.service`がコピーされます。
+
+実行ファイルと設定ファイルのインストール先フォルダーを変えたいときには、環境変数`DESTBINDIR`および`DESTETCDIR`でそれぞれフォルダーを指定してから、`sudo -E ./install.sh`としてください。
+
+状態やログについては`journalctl -u sabatrapd`で確認できます。
+
+## 詳細設定
 
 sabatrapdのより高度な設定およびカスタマイズについて説明します。
 
-#### MIBの用意
+### MIBの用意
 
 MIB（Management Information Base）ファイルをsabatrapdに登録すると、SNMP Trapメッセージの項目を抽出して投稿内容に含めることができます。
 
@@ -130,11 +161,13 @@ trap:
 
 どのようなMIBオブジェクトが利用可能かは、各MIBファイルを参照してください。
 
-SNMP Trapを捕捉しすぎると、無用なアラートがMackerelで多発することになります。緊急性の高い最低限のもののみ設定するようにすることをお勧めします。
+SNMP Trapを捕捉しすぎると、無用なアラートがMackerelで多発することになります。緊急性の高い、最小限のもののみ設定するようにすることをお勧めします。
+
+`samples`フォルダーには、例としてYAMAHA SWX2220およびSWX3220が発行するSNMP Trapの一覧を用意しています。捕捉したいものを`sabatrapd.yml`にコピーするとよいでしょう。
 
 ### ネットワーク機器ごとの文字エンコーディング設定
 
-一部のネットワーク機器では、Shift JISエンコーディングの日本語メッセージを発行することがあります。Mackerelに投稿する際にはUTF-8エンコーディングでなければならないため、ネットワーク機器のIPアドレスを明示して変換対象とするようにします。
+一部のネットワーク機器では、Shift JISエンコーディングの日本語メッセージを発行することがあります。Mackerelに投稿する際にはUTF-8エンコーディングでなければならないため、ネットワーク機器のIPアドレスを明示して文字エンコーディング変換対象とするようにします。
 
 たとえばIPアドレス「192.168.1.200」のネットワーク機器からのShift JISエンコーディングのメッセージを変換対象とするには、以下のように記載します。
 
@@ -152,23 +185,29 @@ encoding:
 export HTTPS_PROXY=https://proxyserver:8443
 ```
 
-## オプション
+sabatrapdをsystemd環境で自動起動している場合は、`/usr/local/etc/sabatrapd.env`に環境変数を設定する行があるので、そこで指定します。
 
-sabatrapdはいくつかのオプションをとることができます。
+<hr>
 
-- `-conf <設定ファイル>`: 設定YAMLファイルを指定します。このオプションを省略したときには、デフォルトでカレントフォルダーにある`sabatrapd.yml`を参照します。
-- `-dry-run`: Mackerelにメッセージを投稿しないモードで動作します。本番の監視の前に、SNMP Trapの挙動を確認したいときに指定します。
+## セットアップ手順（GitHubリポジトリの利用）
 
-## 起動の自動化
+GitHubリポジトリからビルドする手順を紹介します。
 
-Linuxのsystemd環境で自動起動するファイルを、サンプルとして用意しています。
+[Goの開発環境](https://go.dev/dl/)をインストールした後、本リポジトリを展開した作業フォルダー内で、以下のコマンドでsabatrapdをビルドします。
 
-1. `sudo make install`でインストールします。デフォルトでは`/usr/local/bin`フォルダーに`sabatrapd`が、`/usr/local/etc`フォルダーに設定ファイルが、systemd設定フォルダーに`sabatrapd.service`がコピーされます。なお、フォルダーは環境変数`DESTBINDIR`および`DESTETCDIR`で指定して`sudo -E make -e install`と渡すことで変更できます。
-2. `/usr/local/etc`フォルダーに配置された`sabatrapd.yml`を編集し、MackerelのAPI文字列などを設定します。
-3. プロキシーサーバーを利用する場合は、`/usr/local/etc`フォルダーに配置された`sabatrapd.env`に設定します。
-4. `sudo systemctl enable sabatrapd.service`でサービスを有効化します。
+```
+make
+```
 
-状態やログについては`journalctl -u sabatrapd`で確認できます。
+次のコマンドでsabatrapdを直接ビルドすることもできます。
+
+```
+go build
+```
+
+以降の使い方については、「セットアップ手順（リリースアーカイブの利用）」の各項と同じです。
+
+<hr>
 
 ## ライセンス
 

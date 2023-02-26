@@ -8,7 +8,12 @@ builds:
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     files:
+      - README.md
+      - images/*
+      - LICENSE
+      - install.sh
       - systemd/*
+      - samples/*
       - sabatrapd.yml.sample
 release:
   github:
