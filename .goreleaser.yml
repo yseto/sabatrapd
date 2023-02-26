@@ -1,0 +1,16 @@
+builds:
+  - binary: sabatrapd
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - systemd/*
+      - sabatrapd.yml.sample
+release:
+  github:
+    owner: yseto
+    name: sabatrapd

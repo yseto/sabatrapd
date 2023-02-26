@@ -5,7 +5,7 @@ After=network.target
 
 [Service]
 EnvironmentFile=-%DESTETCDIR%/sabatrapd.env
-ExecStart=/usr/bin/sabatrapd %DESTETCDIR%/sabatrapd.yml
+ExecStart=/usr/local/bin/sabatrapd -conf %DESTETCDIR%/sabatrapd.yml
 
 [Install]
 WantedBy=multi-user.target
