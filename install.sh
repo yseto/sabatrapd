@@ -12,7 +12,7 @@ install -m 755 sabatrapd $DESTBINDIR || exit 1
 install -m 644 sabatrapd.yml $DESTETCDIR/sabatrapd.yml || exit 1
 install -m 644 systemd/sabatrapd.env $DESTETCDIR/sabatrapd.env || exit 1
 install -m 644 systemd/sabatrapd.service `systemd-path systemd-system-unit` || exit 1
-sed -i -e "s|%DESTETCDIR%|$DESTETCDIR|" `systemd-path systemd-system-unit`/sabatrapd.service || exit 1
+sed -i -e "s|%DESTBINDIR%|$DESTBINDIR|" -e "s|%DESTETCDIR%|$DESTETCDIR|" `systemd-path systemd-system-unit`/sabatrapd.service || exit 1
 systemctl enable sabatrapd.service || exit 1
 systemctl start sabatrapd.service || exit 1
 echo "sabatrapd installation is finished."
