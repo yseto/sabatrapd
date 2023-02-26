@@ -1,6 +1,6 @@
 # sabatrapd
 
-![](./images/sabatrapd.jpg)
+![](./images/sabatrapd.png)
 
 ## 概要
 
