@@ -1,0 +1,103 @@
+# for YAMAHA network devices
+# Based on: http://www.rtpro.yamaha.co.jp/SW/docs/swx2220/index.html and http://www.rtpro.yamaha.co.jp/SW/docs/swx3220/index.html
+# MIB: http://www.rtpro.yamaha.co.jp/RT/docs/mib/index.php
+trap:
+  # coldStart
+  - ident: .1.3.6.1.6.3.1.1.5.1
+    format: '{{ addr }} is cold started'
+  # warmStart
+  - ident: .1.3.6.1.6.3.1.1.5.2
+    format: '{{ addr }} is warm started'
+  # linkDown
+  - ident: .1.3.6.1.6.3.1.1.5.3
+    format: '{{ addr }} port {{ read "IF-MIB::ifIndex" }} is linkdown'
+  # linkUp
+  - ident: .1.3.6.1.6.3.1.1.5.4
+    format: '{{ addr }} port {{ read "IF-MIB::ifIndex" }} is linkup'
+  # authenticationFailure
+  - ident: .1.3.6.1.6.3.1.1.5.5
+    format: '{{ addr }} received a different community message'
+  # pethPsePortOnOffNotification
+  - ident: .1.3.6.1.2.1.105.0.1
+    format: '{{ addr }} changed PoE port status'
+  # pethMainPowerUsageOnNotification
+  - ident: .1.3.6.1.2.1.105.0.2
+    format: '{{ addr }} detected the power consumption exceedd a limit'
+  # pethMainPowerUsageOffNotification
+  - ident: .1.3.6.1.2.1.105.0.3
+    format: '{{ addr }} detected the power consumption backed normal'
+  # risingAlarm
+  - ident: .1.3.6.1.2.1.16.0.1
+    format: '{{ addr }} exceeded RMON uppper limit'
+  # fallingAlarm
+  - ident: .1.3.6.1.2.1.16.0.2
+    format: '{{ addr }} exceeded RMON lower limit'
+  # newRoot
+  - ident: .1.3.6.1.2.1.17.0.1
+    format: '{{ addr }} becomes new root'
+  # topologyChange
+  - ident: .1.3.6.1.2.1.17.0.2
+    format: '{{ addr }} detected topology changes'
+  # yshTemperatureStatusNormalTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.5
+    format: '{{ addr }} backed to normal temperature'
+  # yshTemperatureStatusWarningTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.6
+    format: '{{ addr }} heats "warning" level'
+  # yshTemperatureStatusErrorTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.7
+    format: '{{ addr }} heats "error" level'
+  # yshFanStoppedTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.8
+    format: '{{ addr }} detected FAN stopped'
+  # yshFanSpeedUpTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.9
+    format: '{{ addr }} increases the speed of its FAN'
+  # yshFanSpeedDownTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.10
+    format: '{{ addr }} decreases the speed of its FAN'
+  # yshVIVoltageErrorTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.11
+    format: '{{ addr }} detected abnormal volatage'
+  # yshVICurrentErrorTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.12
+    format: '{{ addr }} detected abnormal electric current'
+  # yshFanRecoveredTrap
+  - ident: .1.3.6.1.4.1.1182.3.1.0.14
+    format: '{{ addr }} detected FAN was recovered'
+  # ysl2msFindSlave
+  - ident: .1.3.6.1.4.1.1182.3.5.0.1
+    format: '{{ addr }} found L2MS slave'
+  # ysl2msDetectDown
+  - ident: .1.3.6.1.4.1.1182.3.5.0.2
+    format: '{{ addr }} lost L2MS slave'
+  # ysedTrap
+  - ident: .1.3.6.1.4.1.1182.3.6.0.1
+    format: '{{ addr }} catched ErrorDisable trap'
+  # ystmIfTermTrap
+  - ident: .1.3.6.1.4.1.1182.3.8.0.1
+    format: '{{ addr }} detected a port monitoring'
+  # ystmIpTermTrap
+  - ident: .1.3.6.1.4.1.1182.3.8.0.2
+    format: '{{ addr }} detected IP address monitoring'
+  # yspeSupplyPortTrap
+  - ident: .1.3.6.1.4.1.1182.3.10.0.1
+    format: '{{ addr }} PoE power supply is started'
+  # yspeTerminatePortTrap
+  - ident: .1.3.6.1.4.1.1182.3.10.0.2
+    format: '{{ addr }} PoE power supply is stopped'
+  # yspeGuardBandStateTrap
+  - ident: .1.3.6.1.4.1.1182.3.10.0.3
+    format: '{{ addr }} guard band status is changed'
+  # yspePortErrorTrap
+  - ident: .1.3.6.1.4.1.1182.3.10.0.4
+    format: '{{ addr }} PoE error status is changed'
+  # yspeUnitFailureTrap
+  - ident: .1.3.6.1.4.1.1182.3.10.0.5
+    format: '{{ addr }} PoE power unit is failure'
+  # ysldPortDetectLoopTrap
+  - ident: .1.3.6.1.4.1.1182.3.11.0.1
+    format: '{{ addr }} detected a loop'
+  # ysldPortResolveLoopTrap
+  - ident: .1.3.6.1.4.1.1182.3.11.0.2
+    format: '{{ addr }} loop is resolved'
