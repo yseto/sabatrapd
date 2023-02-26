@@ -1,6 +1,6 @@
 mackerel:
-  x-api-key: ****
-  host-id: ****
+  x-api-key: 00000000
+  host-id: aaaa
 snmp:
   addr: 0.0.0.0
   port: 9162
