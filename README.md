@@ -14,7 +14,7 @@ SNMP Trapとは、ネットワーク機器側からサーバーに状態の変�
 
 - 本プログラムは無保証です。
 - プロトコルはSNMP v2cのみに対応しています。
-- SNMP Trapの内容は「WARNING」としてMackerelに投稿され、アラートになります。SNMP Trapの原因が解消されてもsabatrapdでは関知できないので、Mackerel上でアラートを手動で閉じる必要があります。そのため、SNMP Trap捕捉は最小限に留めることを推奨します。
+- SNMP Trapの内容は「WARNING」としてMackerelに投稿され、アラートになります。SNMP Trapの原因が解消されてもsabatrapdでは関知できないので、Mackerel上でアラートを手動で閉じる必要があります。そのため、SNMP Trapの捕捉は最小限に留めることを推奨します。
 
 ## セットアップ
 
@@ -151,16 +151,15 @@ export HTTPS_PROXY=https://proxyserver:8443
 sabatrapdはいくつかのオプションをとることができます。
 
 - `-conf <設定ファイル>`: 設定YAMLファイルを指定します。このオプションを省略したときには、デフォルトでカレントフォルダーにある`sabatrapd.yml`を参照します。
-- `-dry-run`: MackerelのAPIにメッセージを投稿しないモードで動作します。本番の監視の前に、SNMP Trapの挙動を確認したいときに指定します。
+- `-dry-run`: Mackerelにメッセージを投稿しないモードで動作します。本番の監視の前に、SNMP Trapの挙動を確認したいときに指定します。
 
 ## 起動の自動化
 
 Linuxのsystemd環境で自動起動するファイルを、サンプルとして用意しています。
 
 1. このフォルダー内で`make`を実行します。`sabatrapd`ファイルが作成されます。
-2. `sudo make install`でインストールします。デフォルトでは`/usr/local/bin`フォルダーに`sabatrapd`が、`/usr/local/etc`フォルダーに設定ファイルが、systemd設定フォルダーに`sabatrapd.service`がコピーされます。
-  - フォルダーは、環境変数`DESTBINDIR`および`DESTETCDIR`でパスを指定して`sudo -E make -e install`と渡すことで変更できます。
-3. `/usr/local/etc`フォルダーに配置された`sabatrapd.yml`のAPI文字列などを設定します。
+2. `sudo make install`でインストールします。デフォルトでは`/usr/local/bin`フォルダーに`sabatrapd`が、`/usr/local/etc`フォルダーに設定ファイルが、systemd設定フォルダーに`sabatrapd.service`がコピーされます。なお、フォルダーは環境変数`DESTBINDIR`および`DESTETCDIR`で指定して`sudo -E make -e install`と渡すことで変更できます。
+3. `/usr/local/etc`フォルダーに配置された`sabatrapd.yml`を編集し、MackerelのAPI文字列などを設定します。
 4. プロキシーサーバーを利用する場合は、`/usr/local/etc`フォルダーに配置された`sabatrapd.env`に設定します。
 5. `sudo systemctl enable sabatrapd.service`でサービスを有効化します。
 
