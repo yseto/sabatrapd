@@ -48,12 +48,12 @@ func (q *Queue) Dequeue(ctx context.Context) {
 	item := e.Value.(Item)
 	if q.client == nil {
 		log.Printf("receive %q %q\n", item.Addr, item.Message)
-		return
-	}
-	err := q.send(item)
-	if err != nil {
-		log.Println(err)
-		return
+	} else {
+		err := q.send(item)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 	}
 	q.m.Lock()
 	q.q.Remove(e)
