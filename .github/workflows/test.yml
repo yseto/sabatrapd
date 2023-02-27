@@ -1,0 +1,32 @@
+---
+name: test
+
+on:
+  push:
+    branches:
+    - main
+    tags:
+    - v*
+  pull_request:
+env:
+  DEBIAN_FRONTEND: noninteractive
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: golangci/golangci-lint-action@v3
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v3
+      with:
+        go-version: "1.19.x"
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - run: go test -v ./...
