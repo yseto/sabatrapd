@@ -11,10 +11,14 @@ import (
 	"github.com/mackerelio/mackerel-client-go"
 )
 
+type Client interface {
+	PostCheckReports(crs *mackerel.CheckReports) error
+}
+
 type Queue struct {
 	q      *list.List
 	m      sync.Mutex
-	client *mackerel.Client
+	client Client
 	hostId string
 }
 
@@ -25,7 +29,7 @@ type Item struct {
 }
 
 // NewQueue is needed mackerel client, host id.
-func NewQueue(client *mackerel.Client, hostId string) *Queue {
+func NewQueue(client Client, hostId string) *Queue {
 	return &Queue{
 		q:      list.New(),
 		client: client,
