@@ -48,8 +48,12 @@ func (q *Queue) Dequeue(ctx context.Context) {
 	item := e.Value.(Item)
 	if q.client == nil {
 		log.Printf("receive %q %q\n", item.Addr, item.Message)
-	} else {
-		q.send(item)
+		return
+	}
+	err := q.send(item)
+	if err != nil {
+		log.Println(err)
+		return
 	}
 	q.m.Lock()
 	q.q.Remove(e)
@@ -58,7 +62,7 @@ func (q *Queue) Dequeue(ctx context.Context) {
 
 const msgLengthLimit = 1024
 
-func (q *Queue) send(item Item) {
+func (q *Queue) send(item Item) error {
 	message := item.Message
 	if utf8.RuneCountInString(message) > msgLengthLimit {
 		message = string([]rune(message)[0:msgLengthLimit])
@@ -75,8 +79,8 @@ func (q *Queue) send(item Item) {
 	}
 	err := q.client.PostCheckReports(&mackerel.CheckReports{Reports: reports})
 	if err != nil {
-		log.Println(err)
-	} else {
-		log.Printf("mackerel success: %q %q", item.Addr, item.Message)
+		return err
 	}
+	log.Printf("mackerel success: %q %q", item.Addr, item.Message)
+	return nil
 }
