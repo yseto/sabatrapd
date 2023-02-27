@@ -94,7 +94,6 @@ func TestDryRunQueue(t *testing.T) {
 }
 
 type mockErrorClient struct {
-	reports *mackerel.CheckReports
 }
 
 func (m *mockErrorClient) PostCheckReports(crs *mackerel.CheckReports) error {
