@@ -28,8 +28,8 @@ func TestAdd(t *testing.T) {
 
 func TestDecoder(t *testing.T) {
 	d := NewDecoder()
-	d.Register("192.0.2.1", "utf-8")
-	d.Register("192.0.2.2", "shift-jis")
+	_ = d.Register("192.0.2.1", "utf-8")
+	_ = d.Register("192.0.2.2", "shift-jis")
 
 	t.Run("select utf-8", func(t *testing.T) {
 		actual, err := d.Decode("192.0.2.1", []byte{0x48, 0x65, 0x6c, 0x6c, 0x6f})
