@@ -132,7 +132,7 @@ mib:
 MIBファイルはベンダー各社から提供されています。
 
 - Red Hat Enterprise Linuxやその派生ディストリビューションの場合は、net-snmp-libsパッケージをインストールすると、`/usr/share/snmp/mibs/`フォルダーに`SNMPv2-MIB`や`IF-MIB`などのMIBファイルが置かれます。
-- Debian GNU/Linux・Ubuntuの場合は、snmp-mibs-downloaderパッケージ（non-freeセクション）をインストールすると、`/var/lib/mibs/ietf/`フォルダーに`SNMPv2-MIB`や`IF-MIB`などのMIBファイルが置かれます。
+- Debian GNU/Linux・Ubuntuの場合は、snmp-mibs-downloaderパッケージ（non-freeセクション）をインストールすると、`/var/lib/snmp/mibs/ietf/`フォルダーに`SNMPv2-MIB`や`IF-MIB`などのMIBファイルが置かれます。
 
 ### SNMP Trap捕捉メッセージの設定
 
