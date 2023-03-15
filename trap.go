@@ -79,7 +79,7 @@ func main() {
 		}
 	}
 
-	var client *mackerel.Client
+	var client notification.Client
 	var hostid string
 	if !conf.DryRun {
 		client, err = checkMackerelConfig(conf.Mackerel)
