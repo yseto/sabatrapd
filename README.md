@@ -14,7 +14,8 @@ SNMP Trapとは、ネットワーク機器側からサーバーに状態の変�
 
 - 本プログラムは無保証です。
 - プロトコルはSNMP v2cのみに対応しています。
-- SNMP Trapの内容は「WARNING」としてMackerelに投稿され、アラートになります。SNMP Trapの原因が解消されてもsabatrapdでは関知できないので、Mackerel上でアラートを手動で閉じる必要があります。そのため、SNMP Trapの捕捉は最小限に留めることを推奨します。
+- SNMP Trapの内容はMackerelに投稿され、アラートになります。SNMP Trapの原因が解消されてもsabatrapdでは関知できないので、Mackerel上でアラートを手動で閉じる必要があります。そのため、SNMP Trapの捕捉は最小限に留めることを推奨します。
+  - 捕捉対象に対してあらかじめ「WARNING」「CRITICAL」「UNKNOWN」のそれぞれのステータスを設定することができます。無指定時には「WARNING」が用いられます。
 
 ## セットアップ手順（リリースアーカイブの利用）
 

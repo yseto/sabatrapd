@@ -60,9 +60,13 @@ func main() {
 	}
 	defer mibParser.Close()
 
-	// template tests.
 	for i := range conf.Trap {
+		// template tests.
 		if err := template.Parse(conf.Trap[i].Format); err != nil {
+			log.Fatalln(err)
+		}
+		// validate alert-level
+		if err := config.ValidateAlertLevel(conf.Trap[i].AlertLevel); err != nil {
 			log.Fatalln(err)
 		}
 	}

@@ -14,8 +14,9 @@ type TrapServer struct {
 }
 
 type Trap struct {
-	Ident  string `yaml:"ident"`
-	Format string `yaml:"format"`
+	Ident      string `yaml:"ident"`
+	Format     string `yaml:"format"`
+	AlertLevel string `yaml:"alert-level"` // warning, critical, unknown. default: warning
 }
 
 type Mackerel struct {

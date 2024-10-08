@@ -87,7 +87,7 @@ func TestDryRunQueue(t *testing.T) {
 	}()
 	DryRunQueue()
 	actual := buf.String()
-	expected := `receive "192.0.2.1" "message"` + "\n"
+	expected := `receive "192.0.2.1" "message" "WARNING"` + "\n"
 	if actual != expected {
 		t.Errorf("log is invalid. get %q, want %q", actual, expected)
 	}

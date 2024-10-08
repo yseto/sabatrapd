@@ -40,12 +40,14 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	var pad = make(map[string]string)
 	var specificTrapFormat string
 	var occurredAt = time.Now().Unix()
+	var alertLevel string
 
 	for _, v := range packet.Variables {
 		if strings.HasPrefix(v.Name, SnmpTrapOIDPrefix) {
 			for i := range config.Trap {
 				if strings.HasPrefix(v.Value.(string), config.Trap[i].Ident) {
 					specificTrapFormat = config.Trap[i].Format
+					alertLevel = config.Trap[i].AlertLevel
 				}
 			}
 		}
@@ -114,5 +116,6 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 		OccurredAt: occurredAt,
 		Addr:       addr.IP.String(),
 		Message:    message,
+		AlertLevel: alertLevel,
 	})
 }

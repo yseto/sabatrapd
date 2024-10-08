@@ -9,6 +9,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/mackerelio/mackerel-client-go"
+
+	"github.com/yseto/sabatrapd/config"
 )
 
 type Client interface {
@@ -26,6 +28,7 @@ type Item struct {
 	OccurredAt int64
 	Addr       string
 	Message    string
+	AlertLevel string
 }
 
 // NewQueue is needed mackerel client, host id.
@@ -51,7 +54,7 @@ func (q *Queue) Dequeue(ctx context.Context) {
 	e := q.q.Front()
 	item := e.Value.(Item)
 	if q.client == nil {
-		log.Printf("receive %q %q\n", item.Addr, item.Message)
+		log.Printf("receive %q %q %q\n", item.Addr, item.Message, config.ConvertAlertLevel(item.AlertLevel))
 	} else {
 		err := q.send(item)
 		if err != nil {
@@ -75,7 +78,7 @@ func (q *Queue) send(item Item) error {
 	reports := []*mackerel.CheckReport{
 		{
 			Source:     mackerel.NewCheckSourceHost(q.hostId),
-			Status:     mackerel.CheckStatusWarning,
+			Status:     config.ConvertAlertLevel(item.AlertLevel),
 			Name:       fmt.Sprintf("sabatrapd %s", item.Addr),
 			Message:    message,
 			OccurredAt: item.OccurredAt,

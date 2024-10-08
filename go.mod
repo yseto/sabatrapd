@@ -1,6 +1,6 @@
 module github.com/yseto/sabatrapd
 
-go 1.19
+go 1.23.0
 
 require (
 	github.com/gosnmp/gosnmp v1.35.0
