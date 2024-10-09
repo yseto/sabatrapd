@@ -166,6 +166,14 @@ SNMP Trapを捕捉しすぎると、無用なアラートがMackerelで多発す
 
 `samples`フォルダーには、例としてYAMAHA SWX2220およびSWX3220が発行するSNMP Trapの一覧を用意しています。捕捉したいものを`sabatrapd.yml`にコピーするとよいでしょう。
 
+デフォルトでは捕捉対象のアラートのレベルは「WARNING」に設定されていますが、`alert-level`を使って特定の捕捉対象について明示的に「CRITICAL」や「UNKNOWN」のレベルを設定することも可能です。
+
+```
+  - ident: .1.3.6.1.6.3.1.1.5.3
+    format: '{{ addr }} {{ read "IF-MIB::ifDescr" }} is linkdown'
+    alert-level: critical
+```
+
 ### ネットワーク機器ごとの文字エンコーディング設定
 
 一部のネットワーク機器では、Shift JISエンコーディングの日本語メッセージを発行することがあります。Mackerelに投稿する際にはUTF-8エンコーディングでなければならないため、ネットワーク機器のIPアドレスを明示して文字エンコーディング変換対象とするようにします。
