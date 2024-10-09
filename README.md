@@ -14,7 +14,8 @@ SNMP Trapとは、ネットワーク機器側からサーバーに状態の変�
 
 - 本プログラムは無保証です。
 - プロトコルはSNMP v2cのみに対応しています。
-- SNMP Trapの内容は「WARNING」としてMackerelに投稿され、アラートになります。SNMP Trapの原因が解消されてもsabatrapdでは関知できないので、Mackerel上でアラートを手動で閉じる必要があります。そのため、SNMP Trapの捕捉は最小限に留めることを推奨します。
+- SNMP Trapの内容はMackerelに投稿され、アラートになります。SNMP Trapの原因が解消されてもsabatrapdでは関知できないので、Mackerel上でアラートを手動で閉じる必要があります。そのため、SNMP Trapの捕捉は最小限に留めることを推奨します。
+  - 捕捉対象に対してあらかじめ「WARNING」「CRITICAL」「UNKNOWN」のそれぞれのステータスを設定することができます。無指定時には「WARNING」が用いられます。
 
 ## セットアップ手順（リリースアーカイブの利用）
 
@@ -164,6 +165,14 @@ trap:
 SNMP Trapを捕捉しすぎると、無用なアラートがMackerelで多発することになります。緊急性の高い、最小限のもののみ設定するようにすることをお勧めします。
 
 `samples`フォルダーには、例としてYAMAHA SWX2220およびSWX3220が発行するSNMP Trapの一覧を用意しています。捕捉したいものを`sabatrapd.yml`にコピーするとよいでしょう。
+
+デフォルトでは捕捉対象のアラートのレベルは「WARNING」に設定されていますが、`alert-level`を使って特定の捕捉対象について明示的に「CRITICAL」や「UNKNOWN」のレベルを設定することも可能です。
+
+```
+  - ident: .1.3.6.1.6.3.1.1.5.3
+    format: '{{ addr }} {{ read "IF-MIB::ifDescr" }} is linkdown'
+    alert-level: critical
+```
 
 ### ネットワーク機器ごとの文字エンコーディング設定
 
