@@ -10,6 +10,7 @@ import (
 	"github.com/yseto/sabatrapd/charset"
 	"github.com/yseto/sabatrapd/config"
 	"github.com/yseto/sabatrapd/notification"
+	"github.com/yseto/sabatrapd/oid"
 	"github.com/yseto/sabatrapd/smi"
 	"github.com/yseto/sabatrapd/template"
 
@@ -21,6 +22,8 @@ const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
 
 type Handler struct {
 	Config    *config.Config
+	Traps     []*config.Trap
+
 	Queue     *notification.Queue
 	MibParser *smi.SMI
 	Decoder   *charset.Decoder
@@ -44,10 +47,18 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 
 	for _, v := range packet.Variables {
 		if strings.HasPrefix(v.Name, SnmpTrapOIDPrefix) {
-			for i := range config.Trap {
-				if strings.HasPrefix(v.Value.(string), config.Trap[i].Ident) {
-					specificTrapFormat = config.Trap[i].Format
-					alertLevel = config.Trap[i].AlertLevel
+			value := v.Value.(string)
+
+			poid, err := oid.Parse(value)
+			if err != nil {
+				fmt.Printf("%+v\n", err)
+				continue
+			}
+
+			for i := range h.Traps {
+				if oid.HasPrefix(poid, h.Traps[i].ParsedIdent) && specificTrapFormat == "" {
+					specificTrapFormat = h.Traps[i].Format
+					alertLevel = h.Traps[i].AlertLevel
 				}
 			}
 		}

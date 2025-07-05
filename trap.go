@@ -97,8 +97,14 @@ func main() {
 
 	queue := notification.NewQueue(client, hostid)
 
+	traps, err := conf.SortedTrapRules()
+	if err != nil {
+		log.Fatalf("failed parsed config: : %v\n", err)
+	}
 	handle := &handler.Handler{
 		Config:    &conf,
+		Traps:     traps,
+
 		Queue:     queue,
 		MibParser: &mibParser,
 		Decoder:   decoder,
