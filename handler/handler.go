@@ -41,6 +41,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	}
 
 	var pad = make(map[string]string)
+	var hasTrappedOIDs []string
 	var specificTrapFormat string
 	var occurredAt = time.Now().Unix()
 	var alertLevel string
@@ -48,6 +49,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	for _, v := range packet.Variables {
 		if strings.HasPrefix(v.Name, SnmpTrapOIDPrefix) {
 			value := v.Value.(string)
+			hasTrappedOIDs = append(hasTrappedOIDs, value)
 
 			poid, err := oid.Parse(value)
 			if err != nil {
@@ -116,7 +118,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 			for k, v := range pad {
 				values = append(values, fmt.Sprintf("%q:%q", k, v))
 			}
-			log.Printf("skip because nothing template. format values:[%s]\n", strings.Join(values, ", "))
+			log.Printf("skip because nothing template. has trapped OIDs:%q, format values:[%s]\n", hasTrappedOIDs, strings.Join(values, ", "))
 		}
 		return
 	}
