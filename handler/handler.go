@@ -21,7 +21,8 @@ import (
 const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
 
 type Handler struct {
-	Config    *config.Config
+	Community string
+	Debug     bool
 	Traps     []*config.Trap
 
 	Queue     *notification.Queue
@@ -31,11 +32,10 @@ type Handler struct {
 
 func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	// log.Printf("got trapdata from %s\n", addr.IP)
-	config := h.Config
 
-	if config.TrapServer.Community != "" && config.TrapServer.Community != packet.Community {
-		if config.Debug {
-			log.Printf("invalid community: expected %q, but received %q", config.TrapServer.Community, packet.Community)
+	if h.Community != "" && h.Community != packet.Community {
+		if h.Debug {
+			log.Printf("invalid community: expected %q, but received %q", h.Community, packet.Community)
 		}
 		return
 	}
@@ -111,8 +111,12 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	}
 
 	if specificTrapFormat == "" {
-		if config.Debug {
-			log.Printf("skip because nothing template : %+v\n", pad)
+		if h.Debug {
+			var values []string
+			for k, v := range pad {
+				values = append(values, fmt.Sprintf("%q:%q", k, v))
+			}
+			log.Printf("skip because nothing template. format values:[%s]\n", strings.Join(values, ", "))
 		}
 		return
 	}

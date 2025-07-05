@@ -102,7 +102,8 @@ func main() {
 		log.Fatalf("failed parsed config: : %v\n", err)
 	}
 	handle := &handler.Handler{
-		Config:    &conf,
+		Community: conf.TrapServer.Community,
+		Debug:     conf.Debug,
 		Traps:     traps,
 
 		Queue:     queue,
