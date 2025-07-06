@@ -10,6 +10,7 @@ import (
 	"github.com/yseto/sabatrapd/charset"
 	"github.com/yseto/sabatrapd/config"
 	"github.com/yseto/sabatrapd/notification"
+	"github.com/yseto/sabatrapd/oid"
 	"github.com/yseto/sabatrapd/smi"
 	"github.com/yseto/sabatrapd/template"
 
@@ -20,7 +21,10 @@ import (
 const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
 
 type Handler struct {
-	Config    *config.Config
+	Community string
+	Debug     bool
+	Traps     []*config.Trap
+
 	Queue     *notification.Queue
 	MibParser *smi.SMI
 	Decoder   *charset.Decoder
@@ -28,26 +32,35 @@ type Handler struct {
 
 func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	// log.Printf("got trapdata from %s\n", addr.IP)
-	config := h.Config
 
-	if config.TrapServer.Community != "" && config.TrapServer.Community != packet.Community {
-		if config.Debug {
-			log.Printf("invalid community: expected %q, but received %q", config.TrapServer.Community, packet.Community)
+	if h.Community != "" && h.Community != packet.Community {
+		if h.Debug {
+			log.Printf("invalid community: expected %q, but received %q", h.Community, packet.Community)
 		}
 		return
 	}
 
 	var pad = make(map[string]string)
+	var hasTrappedOIDs []string
 	var specificTrapFormat string
 	var occurredAt = time.Now().Unix()
 	var alertLevel string
 
 	for _, v := range packet.Variables {
 		if strings.HasPrefix(v.Name, SnmpTrapOIDPrefix) {
-			for i := range config.Trap {
-				if strings.HasPrefix(v.Value.(string), config.Trap[i].Ident) {
-					specificTrapFormat = config.Trap[i].Format
-					alertLevel = config.Trap[i].AlertLevel
+			value := v.Value.(string)
+			hasTrappedOIDs = append(hasTrappedOIDs, value)
+
+			poid, err := oid.Parse(value)
+			if err != nil {
+				fmt.Printf("%+v\n", err)
+				continue
+			}
+
+			for i := range h.Traps {
+				if oid.HasPrefix(poid, h.Traps[i].ParsedIdent) && specificTrapFormat == "" {
+					specificTrapFormat = h.Traps[i].Format
+					alertLevel = h.Traps[i].AlertLevel
 				}
 			}
 		}
@@ -100,8 +113,12 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	}
 
 	if specificTrapFormat == "" {
-		if config.Debug {
-			log.Printf("skip because nothing template : %+v\n", pad)
+		if h.Debug {
+			var values []string
+			for k, v := range pad {
+				values = append(values, fmt.Sprintf("%q:%q", k, v))
+			}
+			log.Printf("skip because nothing template. has trapped OIDs:%q, format values:[%s]\n", hasTrappedOIDs, strings.Join(values, ", "))
 		}
 		return
 	}

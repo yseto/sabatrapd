@@ -1,6 +1,12 @@
 package config
 
-import "github.com/yseto/sabatrapd/charset"
+import (
+	"cmp"
+	"slices"
+
+	"github.com/yseto/sabatrapd/charset"
+	"github.com/yseto/sabatrapd/oid"
+)
 
 type MIB struct {
 	Directory   []string `yaml:"directory"`
@@ -14,9 +20,10 @@ type TrapServer struct {
 }
 
 type Trap struct {
-	Ident      string `yaml:"ident"`
-	Format     string `yaml:"format"`
-	AlertLevel string `yaml:"alert-level"` // warning, critical, unknown. default: warning
+	Ident       string `yaml:"ident"`
+	ParsedIdent []int  `yaml:"-"`
+	Format      string `yaml:"format"`
+	AlertLevel  string `yaml:"alert-level"` // warning, critical, unknown. default: warning
 }
 
 type Mackerel struct {
@@ -45,4 +52,22 @@ func (c *Config) RunningMode() string {
 		return "dry-run"
 	}
 	return "execute"
+}
+
+func (c *Config) SortedTrapRules() ([]*Trap, error) {
+	trap := c.Trap
+	for i := range trap {
+		r, err := oid.Parse(trap[i].Ident)
+		if err != nil {
+			return nil, err
+		}
+		trap[i].ParsedIdent = r
+	}
+
+	return slices.SortedFunc(slices.Values(trap), func(a, b *Trap) int {
+		return cmp.Or(
+			cmp.Compare(len(b.ParsedIdent), len(a.ParsedIdent)),
+			cmp.Compare(a.Ident, b.Ident),
+		)
+	}), nil
 }
