@@ -1,7 +1,6 @@
 package config
 
 import (
-	"log"
 	"os"
 	"reflect"
 	"testing"
@@ -23,7 +22,7 @@ func TestSortedTrapRules(t *testing.T) {
 	var conf Config
 	err = yaml.Unmarshal(f, &conf)
 	if err != nil {
-		log.Fatalf("error: %v", err)
+		t.Error(err)
 	}
 
 	expected := []rule{

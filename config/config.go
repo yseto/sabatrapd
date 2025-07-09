@@ -2,6 +2,7 @@ package config
 
 import (
 	"cmp"
+	"log/slog"
 	"slices"
 
 	"github.com/yseto/sabatrapd/charset"
@@ -41,7 +42,7 @@ type Config struct {
 	MIB        *MIB        `yaml:"mib"`
 	TrapServer *TrapServer `yaml:"snmp"`
 	Trap       []*Trap     `yaml:"trap"`
-	Debug      bool        `yaml:"debug"`
+	LogLebel   string      `yaml:"log-level"`
 	DryRun     bool        `yaml:"dry-run"`
 	Mackerel   *Mackerel   `yaml:"mackerel"`
 	Encoding   []*Encoding `yaml:"encoding"`
@@ -70,4 +71,17 @@ func (c *Config) SortedTrapRules() ([]*Trap, error) {
 			cmp.Compare(a.Ident, b.Ident),
 		)
 	}), nil
+}
+
+func (c *Config) GetLogLebel() (level slog.Level, ok bool) {
+	level = slog.LevelInfo
+	ok = true
+	if c.LogLebel == "" {
+		return
+	}
+
+	if err := level.UnmarshalText([]byte(c.LogLebel)); err != nil {
+		ok = false
+	}
+	return
 }

@@ -4,8 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -23,12 +22,11 @@ func (m *mockClient) PostCheckReports(crs *mackerel.CheckReports) error {
 }
 
 func TestRoundOffMessage(t *testing.T) {
-	log.SetOutput(io.Discard)
-	log.SetFlags(0)
-	defer func() {
-		log.SetOutput(os.Stderr)
-		log.SetFlags(log.LstdFlags)
-	}()
+	logger := slog.Default()
+	defer slog.SetDefault(logger)
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	})))
 
 	client := &mockClient{}
 
@@ -79,15 +77,24 @@ func DryRunQueue() {
 
 func TestDryRunQueue(t *testing.T) {
 	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	log.SetFlags(0)
-	defer func() {
-		log.SetOutput(os.Stderr)
-		log.SetFlags(log.LstdFlags)
-	}()
+	logger := slog.Default()
+	defer slog.SetDefault(logger)
+
+	// 時刻情報を取り除いたロガー、bufに書き出す
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// ログ出力からタイムスタンプを削除
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			return a
+		},
+	})))
+
 	DryRunQueue()
 	actual := buf.String()
-	expected := `receive "192.0.2.1" "message" "WARNING"` + "\n"
+	expected := `level=INFO msg=receive addr=192.0.2.1 message=message alertLevel=WARNING` + "\n"
 	if actual != expected {
 		t.Errorf("log is invalid. get %q, want %q", actual, expected)
 	}
@@ -116,15 +123,24 @@ func QueueClientError(t *testing.T) {
 
 func TestQueueClientError(t *testing.T) {
 	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	log.SetFlags(0)
-	defer func() {
-		log.SetOutput(os.Stderr)
-		log.SetFlags(log.LstdFlags)
-	}()
+	logger := slog.Default()
+	defer slog.SetDefault(logger)
+
+	// 時刻情報を取り除いたロガー、bufに書き出す
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// ログ出力からタイムスタンプを削除
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			return a
+		},
+	})))
+
 	QueueClientError(t)
 	actual := buf.String()
-	expected := `error message` + "\n"
+	expected := `level=ERROR msg="send error" error="error message"` + "\n"
 	if actual != expected {
 		t.Errorf("log is invalid. get %q, want %q", actual, expected)
 	}
