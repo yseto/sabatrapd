@@ -140,7 +140,7 @@ func TestQueueClientError(t *testing.T) {
 
 	QueueClientError(t)
 	actual := buf.String()
-	expected := `level=ERROR msg="send error" error="error message"` + "\n"
+	expected := `level=WARN msg="send error" error="error message"` + "\n"
 	if actual != expected {
 		t.Errorf("log is invalid. get %q, want %q", actual, expected)
 	}
