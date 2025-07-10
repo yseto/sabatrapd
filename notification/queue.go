@@ -58,7 +58,7 @@ func (q *Queue) Dequeue(ctx context.Context) {
 	} else {
 		err := q.send(item)
 		if err != nil {
-			slog.Error("send error", "error", err.Error())
+			slog.Warn("send error", "error", err.Error())
 			return
 		}
 	}

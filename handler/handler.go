@@ -50,7 +50,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 
 			poid, err := oid.Parse(value)
 			if err != nil {
-				slog.Error("failed oid.Parse", "error", err.Error())
+				slog.Warn("failed oid.Parse", "error", err.Error())
 				continue
 			}
 
@@ -66,7 +66,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 		padKey = v.Name
 		node, err := h.MibParser.FromOID(v.Name)
 		if err != nil {
-			slog.Error("failed MibParser.FromOID", "error", err.Error())
+			slog.Warn("failed MibParser.FromOID", "error", err.Error())
 		} else {
 			if node != nil {
 				padKey = node.Node.RenderQualified()
@@ -85,14 +85,14 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 				b := v.Value.([]byte)
 				padValue, err = h.Decoder.Decode(addr.IP.String(), b)
 				if err != nil {
-					slog.Error("failed Decoder.Decode", "error", err.Error())
+					slog.Warn("failed Decoder.Decode", "error", err.Error())
 					padValue = "<cannot decode>"
 				}
 				// fmt.Printf("OID: %s, string: %s\n", v.Name, string(b))
 			case g.ObjectIdentifier:
 				valNode, err := h.MibParser.FromOID(v.Value.(string))
 				if err != nil {
-					slog.Error("failed Decoder.Decode", "error", err.Error())
+					slog.Warn("failed Decoder.Decode", "error", err.Error())
 					padValue = v.Value.(string)
 				} else {
 					padValue = valNode.Node.Name
@@ -121,7 +121,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 
 	message, err := template.Execute(specificTrapFormat, pad, addr.IP.String())
 	if err != nil {
-		slog.Error("failed generate message", "error", err.Error())
+		slog.Warn("failed generate message", "error", err.Error())
 		return
 	}
 
