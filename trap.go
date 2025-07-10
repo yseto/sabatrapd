@@ -114,6 +114,11 @@ func main() {
 	}
 
 	queue := notification.NewQueue(client, hostid)
+	
+	// 設定ファイルでキューサイズが指定されている場合は設定
+	if conf.MaxQueueSize > 0 {
+		queue.SetMaxSize(conf.MaxQueueSize)
+	}
 
 	traps, err := conf.SortedTrapRules()
 	if err != nil {

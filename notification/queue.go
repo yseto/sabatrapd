@@ -18,10 +18,11 @@ type Client interface {
 }
 
 type Queue struct {
-	q      *list.List
-	m      sync.Mutex
-	client Client
-	hostId string
+	q       *list.List
+	m       sync.Mutex
+	client  Client
+	hostId  string
+	maxSize int
 }
 
 type Item struct {
@@ -34,37 +35,58 @@ type Item struct {
 // NewQueue is needed mackerel client, host id.
 func NewQueue(client Client, hostId string) *Queue {
 	return &Queue{
-		q:      list.New(),
-		client: client,
-		hostId: hostId,
+		q:       list.New(),
+		client:  client,
+		hostId:  hostId,
+		maxSize: 1000, // デフォルトで1000件まで
 	}
 }
 
 func (q *Queue) Enqueue(item Item) {
 	q.m.Lock()
+	defer q.m.Unlock()
+	
+	// キューサイズが上限に達している場合、古いアイテムを削除
+	if q.q.Len() >= q.maxSize {
+		// 古いアイテムを削除
+		if front := q.q.Front(); front != nil {
+			q.q.Remove(front)
+			slog.Warn("queue full, removing oldest item", "queueSize", q.q.Len(), "maxSize", q.maxSize)
+		}
+	}
+	
 	q.q.PushBack(item)
-	q.m.Unlock()
 }
 
 func (q *Queue) Dequeue(ctx context.Context) {
-	if q.q.Len() == 0 {
-		return
-	}
-
-	e := q.q.Front()
-	item := e.Value.(Item)
-	if q.client == nil {
-		slog.Info("receive", "addr", item.Addr, "message", item.Message, "alertLevel", config.ConvertAlertLevel(item.AlertLevel))
-	} else {
-		err := q.send(item)
-		if err != nil {
-			slog.Warn("send error", "error", err.Error())
-			return
+	// バッチ処理: 最大10件まで一度に処理
+	batchSize := 10
+	processed := 0
+	
+	for processed < batchSize {
+		q.m.Lock()
+		if q.q.Len() == 0 {
+			q.m.Unlock()
+			break
 		}
+		
+		e := q.q.Front()
+		item := e.Value.(Item)
+		q.q.Remove(e)
+		q.m.Unlock()
+		
+		if q.client == nil {
+			slog.Info("receive", "addr", item.Addr, "message", item.Message, "alertLevel", config.ConvertAlertLevel(item.AlertLevel))
+		} else {
+			err := q.send(item)
+			if err != nil {
+				slog.Warn("send error", "error", err.Error())
+				// エラーが発生した場合、このアイテムは破棄する（無限リトライを避ける）
+				continue
+			}
+		}
+		processed++
 	}
-	q.m.Lock()
-	q.q.Remove(e)
-	q.m.Unlock()
 }
 
 const msgLengthLimit = 1024
@@ -90,4 +112,18 @@ func (q *Queue) send(item Item) error {
 	}
 	slog.Info("mackerel success", "addr", item.Addr, "message", item.Message)
 	return nil
+}
+
+// GetQueueSize returns the current queue size
+func (q *Queue) GetQueueSize() int {
+	q.m.Lock()
+	defer q.m.Unlock()
+	return q.q.Len()
+}
+
+// SetMaxSize sets the maximum queue size
+func (q *Queue) SetMaxSize(size int) {
+	q.m.Lock()
+	defer q.m.Unlock()
+	q.maxSize = size
 }

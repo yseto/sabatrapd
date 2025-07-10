@@ -115,7 +115,7 @@ func QueueClientError(t *testing.T) {
 	q.Dequeue(ctx)
 
 	actual := q.q.Len()
-	expected := 1
+	expected := 0  // エラーが発生したアイテムは破棄される
 	if actual != expected {
 		t.Errorf("queue length is invalid. want %d, get %d", expected, actual)
 	}
