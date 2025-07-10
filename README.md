@@ -83,7 +83,7 @@ snmp:
 
 ![チェック監視のアラート](./images/alert.png)
 
-`sabatrapd.yml`の`debug`設定を`true`にすると、受け取ったSNMP Trapメッセージや詳細なログが出力されます。SNMP Trapメッセージをうまく処理できないときにご利用ください。
+`sabatrapd.yml`に`log-level: debug`や`log-level: info`を設定すると、受け取ったSNMP Trapメッセージや詳細なログが出力されます。SNMP Trapメッセージをうまく処理できないときにご利用ください。
 
 sabatrapdはいくつかのオプションをとることができます。
 
@@ -195,6 +195,21 @@ export HTTPS_PROXY=https://proxyserver:8443
 ```
 
 sabatrapdをsystemd環境で自動起動している場合は、`/usr/local/etc/sabatrapd.env`に環境変数を設定する行があるので、そこで指定します。
+
+### ログレベルの設定
+
+`log-level`で標準出力ログに書き出すレベルを設定できます。レベルをdebugにする設定の例を以下に示します。
+
+```
+log-level: debug
+```
+
+レベルの値に指定できる値は次のとおりです。
+
+- `error`: エラー以外は出力しません。なお、エラーはsabatrapdの動作を継続できないことを意味するレベルなので、エラーメッセージの出力後、sabatrapdは実行を終了します
+- `warn`: 警告とエラーを出力します。警告はsabatrapdの動作自体は継続できるものの、対策をとったほうがよい可能性のあるメッセージで、不正なコミュニティ名、解析できないOID、MIB解析の失敗、デコードの失敗、テンプレートからのメッセージ生成の失敗、Mackerelへの投稿の失敗が挙げられます
+- `info`: 警告・エラーのほか、sabatrapdの動作情報や受け取ったTrapの情報を出力します
+- `debug`: 警告・エラー・sabatrapdの動作情報や受け取ったTrapの情報のほか、ライブラリからのメッセージも含む詳細なログを出力します
 
 <hr>
 
