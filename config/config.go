@@ -39,13 +39,14 @@ type Encoding struct {
 }
 
 type Config struct {
-	MIB        *MIB        `yaml:"mib"`
-	TrapServer *TrapServer `yaml:"snmp"`
-	Trap       []*Trap     `yaml:"trap"`
-	LogLebel   string      `yaml:"log-level"`
-	DryRun     bool        `yaml:"dry-run"`
-	Mackerel   *Mackerel   `yaml:"mackerel"`
-	Encoding   []*Encoding `yaml:"encoding"`
+	MIB          *MIB        `yaml:"mib"`
+	TrapServer   *TrapServer `yaml:"snmp"`
+	Trap         []*Trap     `yaml:"trap"`
+	LogLebel     string      `yaml:"log-level"`
+	DryRun       bool        `yaml:"dry-run"`
+	Mackerel     *Mackerel   `yaml:"mackerel"`
+	Encoding     []*Encoding `yaml:"encoding"`
+	MaxQueueSize int         `yaml:"max-queue-size"` // キューの最大サイズ
 }
 
 func (c *Config) RunningMode() string {
