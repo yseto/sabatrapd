@@ -2,7 +2,7 @@ package handler
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"strings"
 	"time"
@@ -22,7 +22,6 @@ const SnmpTrapOIDPrefix = ".1.3.6.1.6.3.1.1.4.1"
 
 type Handler struct {
 	Community string
-	Debug     bool
 	Traps     []*config.Trap
 
 	Queue     *notification.Queue
@@ -34,9 +33,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	// log.Printf("got trapdata from %s\n", addr.IP)
 
 	if h.Community != "" && h.Community != packet.Community {
-		if h.Debug {
-			log.Printf("invalid community: expected %q, but received %q", h.Community, packet.Community)
-		}
+		slog.Warn("invalid community", "expected", h.Community, "received", packet.Community)
 		return
 	}
 
@@ -53,7 +50,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 
 			poid, err := oid.Parse(value)
 			if err != nil {
-				fmt.Printf("%+v\n", err)
+				slog.Warn("failed oid.Parse", "error", err.Error())
 				continue
 			}
 
@@ -69,7 +66,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 		padKey = v.Name
 		node, err := h.MibParser.FromOID(v.Name)
 		if err != nil {
-			fmt.Printf("%+v\n", err)
+			slog.Warn("failed MibParser.FromOID", "error", err.Error())
 		} else {
 			if node != nil {
 				padKey = node.Node.RenderQualified()
@@ -88,14 +85,14 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 				b := v.Value.([]byte)
 				padValue, err = h.Decoder.Decode(addr.IP.String(), b)
 				if err != nil {
-					fmt.Printf("%+v\n", err)
+					slog.Warn("failed Decoder.Decode", "error", err.Error())
 					padValue = "<cannot decode>"
 				}
 				// fmt.Printf("OID: %s, string: %s\n", v.Name, string(b))
 			case g.ObjectIdentifier:
 				valNode, err := h.MibParser.FromOID(v.Value.(string))
 				if err != nil {
-					fmt.Printf("%+v\n", err)
+					slog.Warn("failed Decoder.Decode", "error", err.Error())
 					padValue = v.Value.(string)
 				} else {
 					padValue = valNode.Node.Name
@@ -113,19 +110,18 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 	}
 
 	if specificTrapFormat == "" {
-		if h.Debug {
-			var values []string
-			for k, v := range pad {
-				values = append(values, fmt.Sprintf("%q:%q", k, v))
-			}
-			log.Printf("skip because nothing template. has trapped OIDs:%q, format values:[%s]\n", hasTrappedOIDs, strings.Join(values, ", "))
+		var values []any
+		values = append(values, slog.Any("has trapped OIDs", hasTrappedOIDs))
+		for k, v := range pad {
+			values = append(values, slog.String(k, v))
 		}
+		slog.Info("skip because nothing template", values...)
 		return
 	}
 
 	message, err := template.Execute(specificTrapFormat, pad, addr.IP.String())
 	if err != nil {
-		log.Println(err)
+		slog.Warn("failed generate message", "error", err.Error())
 		return
 	}
 

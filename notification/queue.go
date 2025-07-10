@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 	"unicode/utf8"
 
@@ -54,11 +54,11 @@ func (q *Queue) Dequeue(ctx context.Context) {
 	e := q.q.Front()
 	item := e.Value.(Item)
 	if q.client == nil {
-		log.Printf("receive %q %q %q\n", item.Addr, item.Message, config.ConvertAlertLevel(item.AlertLevel))
+		slog.Info("receive", "addr", item.Addr, "message", item.Message, "alertLevel", config.ConvertAlertLevel(item.AlertLevel))
 	} else {
 		err := q.send(item)
 		if err != nil {
-			log.Println(err)
+			slog.Warn("send error", "error", err.Error())
 			return
 		}
 	}
@@ -88,6 +88,6 @@ func (q *Queue) send(item Item) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("mackerel success: %q %q", item.Addr, item.Message)
+	slog.Info("mackerel success", "addr", item.Addr, "message", item.Message)
 	return nil
 }
