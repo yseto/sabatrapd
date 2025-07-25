@@ -72,7 +72,7 @@ func (h *Handler) OnNewTrap(packet *g.SnmpPacket, addr *net.UDPAddr) {
 				padKey = node.Node.RenderQualified()
 			}
 
-			if node.Node.Type != nil && node.Node.Type.BaseType == types.BaseTypeEnum {
+			if node != nil && node.Node.Type != nil && node.Node.Type.BaseType == types.BaseTypeEnum {
 				i, ok := v.Value.(int)
 				if ok {
 					padValue = node.Node.Type.Enum.Name(int64(i))
