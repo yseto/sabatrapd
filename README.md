@@ -1,5 +1,8 @@
 # sabatrapd
 
+> [!NOTE]
+> https://github.com/mackerelio-labs/sabatrapd へ移動しました。
+
 ![](./images/sabatrapd.png)
 
 ## 概要
