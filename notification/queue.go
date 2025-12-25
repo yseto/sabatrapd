@@ -10,7 +10,7 @@ import (
 
 	"github.com/mackerelio/mackerel-client-go"
 
-	"github.com/yseto/sabatrapd/config"
+	"github.com/mackerelio-labs/sabatrapd/config"
 )
 
 type Client interface {

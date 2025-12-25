@@ -23,7 +23,7 @@ sabatrapdのリリースアーカイブを使うと、プログラミング環�
 
 ### ダウンロードと展開
 
-[リリースページ](https://github.com/yseto/sabatrapd/releases)から、インストール対象のアーキテクチャ（amd64またはarm64）に合ったtar.gz形式のアーカイブファイルをダウンロードします。
+[リリースページ](https://github.com/mackerelio-labs/sabatrapd/releases)から、インストール対象のアーキテクチャ（amd64またはarm64）に合ったtar.gz形式のアーカイブファイルをダウンロードします。
 
 適当なフォルダーを用意し、`tar`コマンドで展開してください。例として、新規に`sabatrapd-dist`フォルダーを作り、ダウンロードフォルダーにあるファイルをそこに展開する場合の操作を以下に示します。
 

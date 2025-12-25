@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yseto/sabatrapd/charset"
-	"github.com/yseto/sabatrapd/config"
-	"github.com/yseto/sabatrapd/notification"
-	"github.com/yseto/sabatrapd/oid"
-	"github.com/yseto/sabatrapd/smi"
-	"github.com/yseto/sabatrapd/template"
+	"github.com/mackerelio-labs/sabatrapd/charset"
+	"github.com/mackerelio-labs/sabatrapd/config"
+	"github.com/mackerelio-labs/sabatrapd/notification"
+	"github.com/mackerelio-labs/sabatrapd/oid"
+	"github.com/mackerelio-labs/sabatrapd/smi"
+	"github.com/mackerelio-labs/sabatrapd/template"
 
 	g "github.com/gosnmp/gosnmp"
 	"github.com/sleepinggenius2/gosmi/types"

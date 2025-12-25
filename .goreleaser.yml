@@ -17,5 +17,5 @@ archives:
       - sabatrapd.yml.sample
 release:
   github:
-    owner: yseto
+    owner: mackerelio-labs
     name: sabatrapd

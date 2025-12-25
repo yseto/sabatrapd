@@ -1,4 +1,4 @@
-module github.com/yseto/sabatrapd
+module github.com/mackerelio-labs/sabatrapd
 
 go 1.23.0
 

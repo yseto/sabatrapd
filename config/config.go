@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/yseto/sabatrapd/charset"
-	"github.com/yseto/sabatrapd/oid"
+	"github.com/mackerelio-labs/sabatrapd/charset"
+	"github.com/mackerelio-labs/sabatrapd/oid"
 )
 
 type MIB struct {

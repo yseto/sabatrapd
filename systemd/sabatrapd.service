@@ -1,6 +1,6 @@
 [Unit]
 Description=SNMP Trap Handler for Mackerel
-Documentation=https://github.com/yseto/sabatrapd
+Documentation=https://github.com/mackerelio-labs/sabatrapd
 After=network.target
 
 [Service]
